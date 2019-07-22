@@ -1,10 +1,33 @@
 use self::Token::*;
+use crate::Pos;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fmt::Write;
 
 pub fn lex<'a>(program: &'a str) -> Vec<Token<'a>> {
     Lexer::lex(program)
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub enum Token<'a> {
+    Let(Pos),
+    Name((&'a str, Pos)),
+    Eq(Pos),
+    Digit((i32, Pos)),
+    Semicolon(Pos),
+    OBracket(Pos),
+    CBracket(Pos),
+    OBrace(Pos),
+    CBrace(Pos),
+    OParen(Pos),
+    CParen(Pos),
+    Colon(Pos),
+    At(Pos),
+    Hash(Pos),
+    Comma(Pos),
+    Pipe(Pos),
+    True(Pos),
+    False(Pos),
 }
 
 struct Lexer<'a> {
@@ -22,7 +45,7 @@ impl<'a> Lexer<'a> {
         };
 
         loop {
-            if lexer.pos >= program.len() {
+            if lexer.at_end() {
                 break;
             } else {
                 lexer.step();
@@ -30,6 +53,10 @@ impl<'a> Lexer<'a> {
         }
 
         lexer.tokens
+    }
+
+    fn at_end(&self) -> bool {
+        self.pos >= self.program.len()
     }
 
     fn step(&mut self) {
@@ -46,10 +73,12 @@ impl<'a> Lexer<'a> {
         }
 
         lazy_static! {
-            static ref RE_IDENT: Regex = Regex::new(r#"\A([a-zA-Z_]+)"#).unwrap();
+            static ref RE_NAME: Regex = Regex::new(r#"\A([a-zA-Z_]+)"#).unwrap();
             static ref RE_LET: Regex = Regex::new(r#"\A(let)"#).unwrap();
             static ref RE_OBRACKET: Regex = Regex::new(r#"\A(\[)"#).unwrap();
             static ref RE_CBRACKET: Regex = Regex::new(r#"\A(\])"#).unwrap();
+            static ref RE_OPAREN: Regex = Regex::new(r#"\A(\()"#).unwrap();
+            static ref RE_CPAREN: Regex = Regex::new(r#"\A(\))"#).unwrap();
             static ref RE_COLON: Regex = Regex::new(r#"\A(:)"#).unwrap();
             static ref RE_EQ: Regex = Regex::new(r#"\A(=)"#).unwrap();
             static ref RE_SEMICOLON: Regex = Regex::new(r#"\A(;)"#).unwrap();
@@ -60,6 +89,8 @@ impl<'a> Lexer<'a> {
             static ref RE_PIPE: Regex = Regex::new(r#"\A(\|)"#).unwrap();
             static ref RE_OBRACE: Regex = Regex::new(r#"\A(\{)"#).unwrap();
             static ref RE_CBRACE: Regex = Regex::new(r#"\A(\})"#).unwrap();
+            static ref RE_TRUE: Regex = Regex::new(r#"\A(true)"#).unwrap();
+            static ref RE_FALSE: Regex = Regex::new(r#"\A(false)"#).unwrap();
         }
 
         self.ignore_whitespace();
@@ -70,6 +101,12 @@ impl<'a> Lexer<'a> {
             self.new_pos(capture.len())
         ));
         scan_for!(RE_CBRACKET, |capture: &'a str| CBracket(
+            self.new_pos(capture.len())
+        ));
+        scan_for!(RE_OPAREN, |capture: &'a str| OParen(
+            self.new_pos(capture.len())
+        ));
+        scan_for!(RE_CPAREN, |capture: &'a str| CParen(
             self.new_pos(capture.len())
         ));
         scan_for!(RE_OBRACE, |capture: &'a str| OBrace(
@@ -94,7 +131,13 @@ impl<'a> Lexer<'a> {
         scan_for!(RE_PIPE, |capture: &'a str| Pipe(
             self.new_pos(capture.len())
         ));
-        scan_for!(RE_IDENT, |capture: &'a str| Ident((
+        scan_for!(RE_TRUE, |capture: &'a str| True(
+            self.new_pos(capture.len())
+        ));
+        scan_for!(RE_FALSE, |capture: &'a str| False(
+            self.new_pos(capture.len())
+        ));
+        scan_for!(RE_NAME, |capture: &'a str| Name((
             capture,
             self.new_pos(capture.len())
         )));
@@ -104,6 +147,10 @@ impl<'a> Lexer<'a> {
                 .expect("tokenized a digit, but parsing to i32 didn't work");
             Digit((digit, self.new_pos(capture.len())))
         });
+
+        if self.at_end() {
+            return;
+        }
 
         let mut f = String::new();
         writeln!(f, "Unexpected token!").unwrap();
@@ -130,48 +177,18 @@ impl<'a> Lexer<'a> {
 
     fn ignore_whitespace(&mut self) {
         loop {
+            if self.at_end() {
+                break;
+            }
+
             let rest = &self.program[self.pos..=self.pos];
 
             if rest.chars().all(|c| c.is_whitespace()) {
                 self.pos += rest.chars().count();
             } else {
-                break
+                break;
             }
         }
-    }
-}
-
-#[derive(Eq, PartialEq, Debug)]
-pub enum Token<'a> {
-    Let(Pos),
-    Ident((&'a str, Pos)),
-    Eq(Pos),
-    Digit((i32, Pos)),
-    Semicolon(Pos),
-    OBracket(Pos),
-    CBracket(Pos),
-    OBrace(Pos),
-    CBrace(Pos),
-    Colon(Pos),
-    At(Pos),
-    Hash(Pos),
-    Comma(Pos),
-    Pipe(Pos),
-}
-
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub struct Pos {
-    from: usize,
-    to: usize,
-}
-
-impl Pos {
-    fn new(from: usize, to: usize) -> Self {
-        Self { from, to }
-    }
-
-    fn from_with(start: usize, s: &str) -> Self {
-        Self::new(start, start + s.len())
     }
 }
 
@@ -214,13 +231,22 @@ mod test {
         assert_eq!(
             lex(program),
             vec![
-                Let(Pos::from_with(0, "let")),
-                Ident(("number", Pos::from_with(4, "number"))),
+                Let(Pos::new(0, 3)),
+                Name(("number", Pos::from_with(4, "number"))),
                 Eq(Pos::from_with(11, "=")),
                 Digit((1, Pos::from_with(13, "1"))),
                 Semicolon(Pos::from_with(14, ";")),
             ]
         );
+    }
+
+    #[test]
+    fn bool() {
+        let program = "true";
+        assert_eq!(lex(program), vec![True(Pos::new(0, 4)),]);
+
+        let program = "false";
+        assert_eq!(lex(program), vec![False(Pos::new(0, 5)),]);
     }
 
     #[test]
@@ -230,9 +256,9 @@ mod test {
             lex(program),
             vec![
                 OBracket(Pos::from_with(0, "[")),
-                Ident(("user", Pos::from_with(1, "user"))),
-                Ident(("set", Pos::from_with(6, "set"))),
-                Ident(("id", Pos::from_with(10, "id"))),
+                Name(("user", Pos::from_with(1, "user"))),
+                Name(("set", Pos::from_with(6, "set"))),
+                Name(("id", Pos::from_with(10, "id"))),
                 Colon(Pos::from_with(12, ":")),
                 Digit((123, Pos::from_with(14, "123"))),
                 CBracket(Pos::from_with(17, "]")),
