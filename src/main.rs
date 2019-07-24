@@ -18,15 +18,22 @@ struct Opt {
 
 fn main() {
     let opt = Opt::from_args();
-    // TODO: Don't `unwrap`, just eprintln with the error and exit(1)
-    let source_text = fs::read_to_string(opt.file).unwrap();
+    let source_text = ok_or_exit(fs::read_to_string(opt.file));
 
     let tokens = lex(&source_text);
-    println!("Lex:\n{:?}\n", tokens);
+    let ast = ok_or_exit(parse(tokens));
 
-    // TODO: Don't `expect`, just eprintln with the error and exit(1)
-    let ast = parse(tokens).expect("parse error");
-    println!("Parse:\n{:?}\n", ast);
+    println!("{:?}", ast);
+}
+
+fn ok_or_exit<T, E: std::error::Error>(value: Result<T, E>) -> T {
+    match value {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1)
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]

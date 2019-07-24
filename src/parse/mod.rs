@@ -1,12 +1,16 @@
 mod ast;
 
-use crate::{lex::Token, Pos};
+use crate::{
+    lex::{self, ParseToken, Token},
+    Pos,
+};
+use std::fmt;
 
 pub use ast::*;
 
 pub fn parse<'a>(tokens: Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>, ParseError> {
     let mut stream = ParseStream::new(tokens);
-    let ast = stream.parse::<LetLocal>()?;
+    let ast = stream.parse_node::<LetLocal>()?;
     Ok(vec![Stmt::LetLocal(ast)])
 }
 
@@ -23,30 +27,46 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    fn parse<T: Parse<'a>>(&mut self) -> Result<T, ParseError> {
+    fn parse_node<T: Parse<'a>>(&mut self) -> Result<T, ParseError> {
         T::parse(self)
     }
 
     /// Get the next token and advance the current position
-    fn consume(&mut self) -> &Token<'a> {
-        // TODO: handle out of bounds
+    fn parse_token<T: ParseToken<'a>>(&mut self) -> Result<&T, ParseError> {
         let token = &self.tokens[self.current_position];
         self.current_position += 1;
-        token
+
+        let node = T::from_token(token);
+
+        node.ok_or_else(|| {
+            ParseError::Error(format!(
+                "Expected '{}' but got '{}'",
+                T::debug_name(),
+                token
+            ))
+        })
     }
 
-    /// Get the next token and without advancing the current position
-    fn peek(&mut self) -> &Token<'a> {
-        // TODO: handle out of bounds
-        let token = &self.tokens[self.current_position];
-        token
-    }
+    // /// Get the next token and without advancing the current position
+    // fn peek(&mut self) -> &Token<'a> {
+    //     &self.tokens[self.current_position]
+    // }
 }
 
 #[derive(Debug)]
 pub enum ParseError {
-    AnyError(String),
+    Error(String),
 }
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ParseError::Error(reason) => write!(f, "Parse error: {}", reason),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
 
 trait Parse<'a>: Sized {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError>;
@@ -54,31 +74,11 @@ trait Parse<'a>: Sized {
 
 impl<'a> Parse<'a> for LetLocal<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        // TODO: Make this pattern nicer
-        let start_pos = match stream.consume() {
-            Token::Let(let_pos) => *let_pos,
-            other => {
-                return parse_error(format!("expected 'let' but got '{:?}'", other))
-            }
-        };
-
-        let ident = stream.parse::<Ident>()?;
-
-        match stream.consume() {
-            Token::Eq(_) => {},
-            other => {
-                return parse_error(format!("expected '=' but got '{:?}'", other))
-            }
-        };
-
-        let body = stream.parse::<Expr>()?;
-
-        let end_pos = match stream.consume() {
-            Token::Semicolon(semicolon_pos) => *semicolon_pos,
-            other => {
-                return parse_error(format!("expected ';' but got '{:?}'", other))
-            }
-        };
+        let start_pos = stream.parse_token::<lex::Let>()?.pos;
+        let ident = stream.parse_node::<Ident>()?;
+        stream.parse_token::<lex::Eq>()?;
+        let body = stream.parse_node::<Expr>()?;
+        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
 
         Ok(LetLocal {
             ident,
@@ -90,30 +90,20 @@ impl<'a> Parse<'a> for LetLocal<'a> {
 
 impl<'a> Parse<'a> for Ident<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        if let Token::Name((name, pos)) = stream.consume() {
-            let ident = Ident { name, pos: *pos };
-            Ok(ident)
-        } else {
-            parse_error("expected name")
-        }
+        let lex::Name { name, pos } = stream.parse_token()?;
+        let ident = Ident { name, pos: *pos };
+        Ok(ident)
     }
-}
-
-fn parse_error<T, S: Into<String>>(s: S) -> Result<T, ParseError> {
-    Err(ParseError::AnyError("expected name".into()))
 }
 
 impl<'a> Parse<'a> for Expr<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        if let Token::Digit((digit, pos)) = stream.consume() {
-            let digit = Digit {
-                digit: *digit,
-                pos: *pos,
-            };
-            Ok(Expr::Digit(digit))
-        } else {
-            Err(ParseError::AnyError("expected digit".to_string()))
-        }
+        let lex::Digit { digit, pos } = stream.parse_token()?;
+        let digit = Digit {
+            digit: *digit,
+            pos: *pos,
+        };
+        Ok(Expr::Digit(digit))
     }
 }
 
@@ -129,8 +119,6 @@ mod test {
         let tokens = lex(&program);
         let ast = parse(tokens).expect("parse error");
 
-        // TODO: Validate that the indexes are current
-        // Does it make most sense for the indexes to be inclusive or exclusive?
         assert_eq!(
             ast,
             vec![Stmt::LetLocal(LetLocal {
