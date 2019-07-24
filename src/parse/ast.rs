@@ -1,11 +1,41 @@
 use crate::Pos;
 
+macro_rules! impl_into {
+    ( $into:ident, $variant:ident, $name:ident<'a> ) => {
+        impl<'a> From<$name<'a>> for $into<'a> {
+            fn from(inner: $name<'a>) -> $into<'a> {
+                $into::$variant(inner)
+            }
+        }
+    };
+
+    ( $into:ident, $name:ident<'a> ) => {
+        impl<'a> From<$name<'a>> for $into<'a> {
+            fn from(inner: $name<'a>) -> $into<'a> {
+                $into::$name(inner)
+            }
+        }
+    };
+
+    ( $into:ident, $name:ident ) => {
+        impl<'a> From<$name> for $into<'a> {
+            fn from(inner: $name) -> $into<'a> {
+                $into::$name(inner)
+            }
+        }
+    };
+}
+
 #[derive(Eq, PartialEq, Debug)]
 pub enum Stmt<'a> {
     LetLocal(LetLocal<'a>),
     LetIVar(LetIVar<'a>),
     MessageSend(MessageSend<'a>),
 }
+
+impl_into!(Stmt, LetLocal<'a>);
+impl_into!(Stmt, LetIVar<'a>);
+impl_into!(Stmt, MessageSend<'a>);
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct LetLocal<'a> {
@@ -29,8 +59,8 @@ pub struct Ident<'a> {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Expr<'a> {
-    Local(Ident<'a>),
-    IVar(Ident<'a>),
+    Local(Local<'a>),
+    IVar(IVar<'a>),
     MessageSend(Box<MessageSend<'a>>),
     Selector(Selector<'a>),
     Block(Block<'a>),
@@ -39,6 +69,22 @@ pub enum Expr<'a> {
     True(True),
     False(False),
     Self_(Self_),
+}
+
+impl_into!(Expr, Local<'a>);
+impl_into!(Expr, IVar<'a>);
+impl_into!(Expr, Selector<'a>);
+impl_into!(Expr, Block<'a>);
+impl_into!(Expr, Digit);
+impl_into!(Expr, List<'a>);
+impl_into!(Expr, True);
+impl_into!(Expr, False);
+impl_into!(Expr, Self_);
+
+impl<'a> From<Box<MessageSend<'a>>> for Expr<'a> {
+    fn from(inner: Box<MessageSend<'a>>) -> Expr<'a> {
+        Expr::MessageSend(inner)
+    }
 }
 
 #[derive(Eq, PartialEq, Debug)]

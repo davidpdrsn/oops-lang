@@ -10,6 +10,7 @@ pub fn lex<'a>(program: &'a str) -> Vec<Token<'a>> {
 #[derive(Eq, PartialEq, Debug)]
 pub enum Token<'a> {
     Let(Let),
+    Self_(Self_),
     Name(Name<'a>),
     Eq(Eq),
     Digit(Digit),
@@ -34,6 +35,7 @@ impl fmt::Display for Token<'_> {
         match self {
             Token::Let(inner) => write!(f, "{}", inner),
             Token::Name(inner) => write!(f, "{}", inner),
+            Token::Self_(inner) => write!(f, "{}", inner),
             Token::Eq(inner) => write!(f, "{}", inner),
             Token::Digit(inner) => write!(f, "{}", inner),
             Token::Semicolon(inner) => write!(f, "{}", inner),
@@ -114,6 +116,7 @@ macro_rules! token_with_pos {
 }
 
 token_with_pos!(Let, LET, "let");
+token_with_pos!(Self_, SELF, "self");
 token_with_pos!(Eq, EQ, "=");
 token_with_pos!(Semicolon, SEMICOLON, ";");
 token_with_pos!(OBracket, OBRACKET, r#"\["#);
@@ -276,6 +279,7 @@ impl<'a> Lexer<'a> {
         self.ignore_whitespace();
 
         scan_for!(Let);
+        scan_for!(Self_);
         scan_for!(Eq);
         scan_for!(OBracket);
         scan_for!(CBracket);
@@ -291,10 +295,12 @@ impl<'a> Lexer<'a> {
         scan_for!(Pipe);
         scan_for!(True);
         scan_for!(False);
+
         scan_for!(Name, |capture: &'a str| Name::new(
             capture,
             self.new_pos(capture.len())
         ));
+
         scan_for!(Digit, |capture: &'a str| {
             let digit = capture
                 .parse::<i32>()
