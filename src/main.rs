@@ -18,12 +18,14 @@ struct Opt {
 
 fn main() {
     let opt = Opt::from_args();
+    // TODO: Don't `unwrap`, just eprintln with the error and exit(1)
     let source_text = fs::read_to_string(opt.file).unwrap();
 
     let tokens = lex(&source_text);
     println!("Lex:\n{:?}\n", tokens);
 
-    let ast = parse(&tokens);
+    // TODO: Don't `expect`, just eprintln with the error and exit(1)
+    let ast = parse(tokens).expect("parse error");
     println!("Parse:\n{:?}\n", ast);
 }
 

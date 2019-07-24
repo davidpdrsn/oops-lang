@@ -152,6 +152,7 @@ impl<'a> Lexer<'a> {
             return;
         }
 
+        // TODO: Turn this error into a Result
         let mut f = String::new();
         writeln!(f, "Unexpected token!").unwrap();
         writeln!(f).unwrap();
