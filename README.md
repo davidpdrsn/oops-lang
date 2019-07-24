@@ -48,4 +48,6 @@ let user = [User new];
 - [x] Lexing
 - [x] Parsing
 - [ ] Interpretation
+    - [x] Build class vtable
+    - [ ] Evaluate statements;
 - [ ] Compilation to JavaScript

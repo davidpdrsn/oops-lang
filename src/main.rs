@@ -1,12 +1,14 @@
 // #![deny(unused_imports)]
 
+mod interpret;
 mod lex;
 mod parse;
 
+use interpret::interpret;
 use lex::lex;
 use parse::parse;
-use std::fs;
 use std::path::PathBuf;
+use std::{fmt, fs};
 use structopt::StructOpt;
 
 /// OOPS language interpreter
@@ -23,9 +25,8 @@ fn main() {
     let source_text = ok_or_exit(fs::read_to_string(opt.file));
 
     let tokens = lex(&source_text);
-    let ast = ok_or_exit(parse(tokens));
-
-    println!("{:#?}", ast);
+    let ast = ok_or_exit(parse(&tokens));
+    ok_or_exit(interpret(&ast));
 }
 
 fn ok_or_exit<T, E: std::error::Error>(value: Result<T, E>) -> T {
@@ -38,10 +39,16 @@ fn ok_or_exit<T, E: std::error::Error>(value: Result<T, E>) -> T {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone)]
 pub struct Span {
     pub from: usize,
     pub to: usize,
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Span({}..{})", self.from, self.to)
+    }
 }
 
 impl Span {

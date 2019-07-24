@@ -3,12 +3,12 @@ use crate::lex::{self, Token};
 use std::fmt::{self, Debug};
 
 pub struct ParseStream<'a> {
-    tokens: Vec<Token<'a>>,
+    tokens: &'a Vec<Token<'a>>,
     current_position: usize,
 }
 
 impl<'a> ParseStream<'a> {
-    pub fn new(tokens: Vec<Token<'a>>) -> Self {
+    pub fn new(tokens: &'a Vec<Token<'a>>) -> Self {
         Self {
             tokens,
             current_position: 0,

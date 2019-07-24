@@ -1,0 +1,39 @@
+mod class;
+mod visitor;
+
+use self::class::find_classes_and_methods;
+use crate::parse as ast;
+use std::{collections::HashMap, fmt};
+
+type Ast<'a> = Vec<ast::Stmt<'a>>;
+
+type VTable<'a, T> = HashMap<&'a str, T>;
+
+pub fn interpret<'a>(ast: &'a Ast<'a>) -> Result<(), InterpretError> {
+    let class_vtable = find_classes_and_methods(ast);
+
+    dbg!(class_vtable);
+
+    Ok(())
+}
+
+#[derive(Debug)]
+enum Value {
+    Nil,
+    Digit(i32),
+}
+
+#[derive(Debug)]
+pub enum InterpretError {
+    Error(String),
+}
+
+impl fmt::Display for InterpretError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            InterpretError::Error(reason) => write!(f, "Interpret error: {}", reason),
+        }
+    }
+}
+
+impl std::error::Error for InterpretError {}

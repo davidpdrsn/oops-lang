@@ -6,7 +6,7 @@ use crate::lex::Token;
 
 pub use ast::*;
 
-pub fn parse<'a>(tokens: Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>, ParseError> {
+pub fn parse<'a>(tokens: &'a Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>, ParseError> {
     let mut stream = ParseStream::new(tokens);
     let acc = stream.parse_many::<Stmt>();
 
@@ -27,7 +27,7 @@ mod test {
     fn let_digit() {
         let program = "let number = 1;";
         let tokens = lex(&program);
-        let ast = ok_or_panic(parse(tokens));
+        let ast = ok_or_panic(parse(&tokens));
 
         assert_eq!(
             ast,
@@ -49,7 +49,7 @@ mod test {
     fn let_name() {
         let program = "let a = b;";
         let tokens = lex(&program);
-        let ast = ok_or_panic(parse(tokens));
+        let ast = ok_or_panic(parse(&tokens));
 
         assert_eq!(
             ast,

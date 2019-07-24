@@ -64,7 +64,7 @@ pub struct LetIVar<'a> {
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct DefineMethod<'a> {
-    pub receiver: ClassName<'a>,
+    pub class_name: ClassName<'a>,
     pub method_name: Selector<'a>,
     pub block: Block<'a>,
     pub span: Span,
@@ -146,7 +146,7 @@ impl<'a> From<Box<MessageSend<'a>>> for Expr<'a> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Hash)]
 pub struct ClassName<'a>(pub Ident<'a>);
 
 #[derive(Eq, PartialEq, Debug)]
@@ -230,7 +230,7 @@ pub struct ClassNew<'a> {
 // Misc
 //
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Hash)]
 pub struct Ident<'a> {
     pub name: &'a str,
     pub span: Span,
@@ -324,7 +324,7 @@ impl<'a> Parse<'a> for DefineMethod<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
         let start = stream.parse_token::<lex::OBracket>()?.span;
 
-        let receiver = stream.parse_node::<ClassName>()?;
+        let class_name = stream.parse_node::<ClassName>()?;
 
         stream.parse_specific_ident("def")?;
         stream.parse_token::<lex::Colon>()?;
@@ -340,7 +340,7 @@ impl<'a> Parse<'a> for DefineMethod<'a> {
         let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(DefineMethod {
-            receiver,
+            class_name,
             method_name,
             block,
             span: Span::new(start.from, end.to),
