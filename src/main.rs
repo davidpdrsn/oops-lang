@@ -23,7 +23,7 @@ fn main() {
     let tokens = lex(&source_text);
     let ast = ok_or_exit(parse(tokens));
 
-    println!("{:?}", ast);
+    println!("{:#?}", ast);
 }
 
 fn ok_or_exit<T, E: std::error::Error>(value: Result<T, E>) -> T {
