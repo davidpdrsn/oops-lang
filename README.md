@@ -32,3 +32,11 @@ let user = [User new];
 
 [user follow user: other_user, source: 123]
 ```
+
+## TODO
+
+- [x] Lexing
+- [ ] Parsing
+    - Parsing of `let number = 1;` is working.
+- [ ] Interpretation
+- [ ] Compilation to JavaScript
