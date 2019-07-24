@@ -1,3 +1,5 @@
+// #![deny(unused_imports)]
+
 mod lex;
 mod parse;
 
