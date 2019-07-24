@@ -1,5 +1,5 @@
 use super::parse_stream::{Parse, ParseError, ParseStream};
-use crate::{lex, Pos};
+use crate::{lex, Span};
 
 macro_rules! impl_into {
     ( $into:ident, $variant:ident, $name:ident<'a> ) => {
@@ -52,14 +52,14 @@ impl_into!(Stmt, DefineClass<'a>);
 pub struct LetLocal<'a> {
     pub ident: Ident<'a>,
     pub body: Expr<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct LetIVar<'a> {
     pub ident: Ident<'a>,
     pub body: Expr<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -67,26 +67,26 @@ pub struct DefineMethod<'a> {
     pub receiver: ClassName<'a>,
     pub method_name: Selector<'a>,
     pub block: Block<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct MessageSendStmt<'a> {
     pub expr: MessageSend<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Return<'a> {
     pub expr: Expr<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct DefineClass<'a> {
     pub name: ClassNameSelector<'a>,
     pub fields: Vec<Selector<'a>>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 //
@@ -110,17 +110,17 @@ pub enum Expr<'a> {
 }
 
 impl<'a> Expr<'a> {
-    pub fn pos(&self) -> Pos {
+    pub fn span(&self) -> Span {
         match self {
-            Expr::Local(inner) => inner.0.pos,
-            Expr::IVar(inner) => inner.pos,
-            Expr::MessageSend(inner) => inner.pos,
-            Expr::ClassNew(inner) => inner.pos,
-            Expr::Selector(inner) => inner.pos,
-            Expr::ClassNameSelector(inner) => inner.pos,
-            Expr::Block(inner) => inner.pos,
-            Expr::Digit(inner) => inner.pos,
-            Expr::List(inner) => inner.pos,
+            Expr::Local(inner) => inner.0.span,
+            Expr::IVar(inner) => inner.span,
+            Expr::MessageSend(inner) => inner.span,
+            Expr::ClassNew(inner) => inner.span,
+            Expr::Selector(inner) => inner.span,
+            Expr::ClassNameSelector(inner) => inner.span,
+            Expr::Block(inner) => inner.span,
+            Expr::Digit(inner) => inner.span,
+            Expr::List(inner) => inner.span,
             Expr::True(inner) => inner.0,
             Expr::False(inner) => inner.0,
             Expr::Self_(inner) => inner.0,
@@ -155,53 +155,53 @@ pub struct Local<'a>(pub Ident<'a>);
 #[derive(Eq, PartialEq, Debug)]
 pub struct IVar<'a> {
     pub ident: Ident<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Digit {
     pub digit: i32,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct List<'a> {
     pub items: Vec<Expr<'a>>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct True(pub Pos);
+pub struct True(pub Span);
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct False(pub Pos);
+pub struct False(pub Span);
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct Self_(pub Pos);
+pub struct Self_(pub Span);
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Selector<'a> {
     pub ident: Ident<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct ClassNameSelector<'a> {
     pub class_name: ClassName<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Block<'a> {
     pub parameters: Vec<Parameter<'a>>,
     pub body: Vec<Stmt<'a>>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Parameter<'a> {
     pub ident: Ident<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -209,21 +209,21 @@ pub struct MessageSend<'a> {
     pub receiver: Expr<'a>,
     pub msg: Ident<'a>,
     pub args: Vec<Argument<'a>>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Argument<'a> {
     pub ident: Ident<'a>,
     pub expr: Expr<'a>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct ClassNew<'a> {
     pub class_name: ClassName<'a>,
     pub args: Vec<Argument<'a>>,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 //
@@ -233,7 +233,7 @@ pub struct ClassNew<'a> {
 #[derive(Eq, PartialEq, Debug)]
 pub struct Ident<'a> {
     pub name: &'a str,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 //
@@ -263,46 +263,46 @@ impl<'a> Parse<'a> for Stmt<'a> {
 
 impl<'a> Parse<'a> for LetLocal<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::Let>()?.pos;
+        let start = stream.parse_token::<lex::Let>()?.span;
         let ident = stream.parse_node::<Ident>()?;
         stream.parse_token::<lex::Eq>()?;
         let body = stream.parse_node::<Expr>()?;
-        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
+        let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(LetLocal {
             ident,
             body,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for LetIVar<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::Let>()?.pos;
+        let start = stream.parse_token::<lex::Let>()?.span;
         stream.parse_token::<lex::At>()?;
         let ident = stream.parse_node::<Ident>()?;
         stream.parse_token::<lex::Eq>()?;
         let body = stream.parse_node::<Expr>()?;
-        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
+        let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(LetIVar {
             ident,
             body,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for Return<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::Return>()?.pos;
+        let start = stream.parse_token::<lex::Return>()?.span;
         let expr = stream.parse_node::<Expr<'a>>()?;
-        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
+        let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(Return {
             expr,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
@@ -310,19 +310,19 @@ impl<'a> Parse<'a> for Return<'a> {
 impl<'a> Parse<'a> for MessageSendStmt<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
         let expr = stream.parse_node::<MessageSend<'a>>()?;
-        let start_pos = expr.pos;
-        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
+        let start = expr.span;
+        let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(MessageSendStmt {
             expr,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for DefineMethod<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::OBracket>()?.pos;
+        let start = stream.parse_token::<lex::OBracket>()?.span;
 
         let receiver = stream.parse_node::<ClassName>()?;
 
@@ -337,20 +337,20 @@ impl<'a> Parse<'a> for DefineMethod<'a> {
 
         stream.parse_token::<lex::CBracket>()?;
 
-        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
+        let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(DefineMethod {
             receiver,
             method_name,
             block,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for DefineClass<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::OBracket>()?.pos;
+        let start = stream.parse_token::<lex::OBracket>()?.span;
 
         stream.parse_specific_class_name("Class")?;
         stream.parse_specific_ident("subclass")?;
@@ -367,20 +367,20 @@ impl<'a> Parse<'a> for DefineClass<'a> {
 
         stream.parse_token::<lex::CBracket>()?;
 
-        let end_pos = stream.parse_token::<lex::Semicolon>()?.pos;
+        let end = stream.parse_token::<lex::Semicolon>()?.span;
 
         Ok(DefineClass {
             name,
             fields,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for Ident<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::Name { name, pos } = stream.parse_token()?;
-        let ident = Ident { name, pos: *pos };
+        let lex::Name { name, span } = stream.parse_token()?;
+        let ident = Ident { name, span: *span };
         Ok(ident)
     }
 }
@@ -409,116 +409,116 @@ impl<'a> Parse<'a> for Expr<'a> {
 
 impl<'a> Parse<'a> for Digit {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::Digit { digit, pos } = stream.parse_token()?;
+        let lex::Digit { digit, span } = stream.parse_token()?;
         Ok(Digit {
             digit: *digit,
-            pos: *pos,
+            span: *span,
         })
     }
 }
 
 impl<'a> Parse<'a> for ClassName<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::ClassName { name, pos } = stream.parse_token()?;
-        Ok(ClassName(Ident { name, pos: *pos }))
+        let lex::ClassName { name, span } = stream.parse_token()?;
+        Ok(ClassName(Ident { name, span: *span }))
     }
 }
 
 impl<'a> Parse<'a> for Local<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::Name { name, pos } = stream.parse_token()?;
-        Ok(Local(Ident { name, pos: *pos }))
+        let lex::Name { name, span } = stream.parse_token()?;
+        Ok(Local(Ident { name, span: *span }))
     }
 }
 
 impl<'a> Parse<'a> for IVar<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::At>()?.pos;
+        let start = stream.parse_token::<lex::At>()?.span;
         let ident = stream.parse_node::<Ident>()?;
-        let end_pos = ident.pos;
+        let end = ident.span;
 
         Ok(IVar {
             ident,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for Selector<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::Hash>()?.pos;
+        let start = stream.parse_token::<lex::Hash>()?.span;
         let ident = stream.parse_node::<Ident>()?;
-        let end_pos = ident.pos;
+        let end = ident.span;
 
         Ok(Selector {
             ident,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for ClassNameSelector<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::Hash>()?.pos;
+        let start = stream.parse_token::<lex::Hash>()?.span;
         let class_name = stream.parse_node::<ClassName>()?;
-        let end_pos = class_name.0.pos;
+        let end = class_name.0.span;
 
         Ok(ClassNameSelector {
             class_name,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for True {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::True { pos } = stream.parse_token()?;
-        Ok(True(*pos))
+        let lex::True { span } = stream.parse_token()?;
+        Ok(True(*span))
     }
 }
 
 impl<'a> Parse<'a> for False {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::False { pos } = stream.parse_token()?;
-        Ok(False(*pos))
+        let lex::False { span } = stream.parse_token()?;
+        Ok(False(*span))
     }
 }
 
 impl<'a> Parse<'a> for Self_ {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let lex::Self_ { pos } = stream.parse_token()?;
-        Ok(Self_(*pos))
+        let lex::Self_ { span } = stream.parse_token()?;
+        Ok(Self_(*span))
     }
 }
 
 impl<'a> Parse<'a> for List<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::OBracket>()?.pos;
+        let start = stream.parse_token::<lex::OBracket>()?.span;
         let items = stream.parse_many_delimited::<Expr<'a>, lex::Comma>();
-        let end_pos = stream.parse_token::<lex::CBracket>()?.pos;
+        let end = stream.parse_token::<lex::CBracket>()?.span;
         Ok(List {
             items,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for MessageSend<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::OBracket>()?.pos;
+        let start = stream.parse_token::<lex::OBracket>()?.span;
 
         let receiver = stream.parse_node::<Expr>()?;
         let msg = stream.parse_node::<Ident>()?;
 
         let args = stream.parse_many::<Argument>();
 
-        let end_pos = stream.parse_token::<lex::CBracket>()?.pos;
+        let end = stream.parse_token::<lex::CBracket>()?.span;
 
         Ok(MessageSend {
             receiver,
             msg,
             args,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
@@ -526,34 +526,34 @@ impl<'a> Parse<'a> for MessageSend<'a> {
 impl<'a> Parse<'a> for Argument<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
         let ident = stream.parse_node::<Ident>()?;
-        let start_pos = ident.pos;
+        let start = ident.span;
         stream.parse_token::<lex::Colon>()?;
 
         let expr = stream.parse_node::<Expr<'a>>()?;
-        let end_pos = expr.pos();
+        let end = expr.span();
 
         Ok(Argument {
             ident,
             expr,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for Block<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::Pipe>()?.pos;
+        let start = stream.parse_token::<lex::Pipe>()?.span;
         let parameters = stream.parse_many::<Parameter>();
         stream.parse_token::<lex::Pipe>()?;
 
         stream.parse_token::<lex::OBrace>()?;
         let body = stream.parse_many::<Stmt>();
-        let end_pos = stream.parse_token::<lex::CBrace>()?.pos;
+        let end = stream.parse_token::<lex::CBrace>()?.span;
 
         Ok(Block {
             parameters,
             body,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
@@ -561,31 +561,31 @@ impl<'a> Parse<'a> for Block<'a> {
 impl<'a> Parse<'a> for Parameter<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
         let ident = stream.parse_node::<Ident>()?;
-        let start_pos = ident.pos;
+        let start = ident.span;
 
-        let end_pos = stream.parse_token::<lex::Colon>()?.pos;
+        let end = stream.parse_token::<lex::Colon>()?.span;
 
         Ok(Parameter {
             ident,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }
 
 impl<'a> Parse<'a> for ClassNew<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError> {
-        let start_pos = stream.parse_token::<lex::OBracket>()?.pos;
+        let start = stream.parse_token::<lex::OBracket>()?.span;
 
         let class_name = stream.parse_node::<ClassName>()?;
         stream.parse_specific_ident("new")?;
         let args = stream.parse_many::<Argument>();
 
-        let end_pos = stream.parse_token::<lex::CBracket>()?.pos;
+        let end = stream.parse_token::<lex::CBracket>()?.span;
 
         Ok(ClassNew {
             class_name,
             args,
-            pos: Pos::new(start_pos.from, end_pos.to),
+            span: Span::new(start.from, end.to),
         })
     }
 }

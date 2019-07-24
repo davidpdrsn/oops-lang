@@ -21,7 +21,7 @@ pub fn parse<'a>(tokens: Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>, ParseError> {
 mod test {
     #[allow(unused_imports)]
     use super::*;
-    use crate::{lex::lex, Pos};
+    use crate::{lex::lex, Span};
 
     #[test]
     fn let_digit() {
@@ -34,13 +34,13 @@ mod test {
             vec![Stmt::LetLocal(LetLocal {
                 ident: Ident {
                     name: "number",
-                    pos: Pos::new(4, 10)
+                    span: Span::new(4, 10)
                 },
                 body: Expr::Digit(Digit {
                     digit: 1,
-                    pos: Pos::new(13, 14)
+                    span: Span::new(13, 14)
                 }),
-                pos: Pos::new(0, 15),
+                span: Span::new(0, 15),
             })]
         );
     }
@@ -56,13 +56,13 @@ mod test {
             vec![Stmt::LetLocal(LetLocal {
                 ident: Ident {
                     name: "a",
-                    pos: Pos::new(4, 5)
+                    span: Span::new(4, 5)
                 },
                 body: Expr::Local(Local(Ident {
                     name: "b",
-                    pos: Pos::new(8, 9),
+                    span: Span::new(8, 9),
                 })),
-                pos: Pos::new(0, 10),
+                span: Span::new(0, 10),
             })]
         );
     }

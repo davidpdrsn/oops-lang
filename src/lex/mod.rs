@@ -1,4 +1,4 @@
-use crate::Pos;
+use crate::Span;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fmt::{self, Write};
@@ -66,16 +66,16 @@ pub trait Parse<'a>: Sized {
     fn from_token<'b>(token: &'b Token<'a>) -> Option<&'b Self>;
 }
 
-macro_rules! token_with_pos {
+macro_rules! token_with_span {
     ( $name:ident, $re_name:ident, $pattern:expr ) => {
         #[derive(Eq, PartialEq, Debug)]
         pub struct $name {
-            pub pos: Pos,
+            pub span: Span,
         }
 
         impl $name {
-            fn new(pos: Pos) -> Self {
-                Self { pos }
+            fn new(span: Span) -> Self {
+                Self { span }
             }
 
             #[inline]
@@ -119,24 +119,24 @@ macro_rules! token_with_pos {
     };
 }
 
-token_with_pos!(Let, LET, "let");
-token_with_pos!(Self_, SELF, "self");
-token_with_pos!(Eq, EQ, "=");
-token_with_pos!(Semicolon, SEMICOLON, ";");
-token_with_pos!(OBracket, OBRACKET, r#"\["#);
-token_with_pos!(CBracket, CBRACKET, r#"\]"#);
-token_with_pos!(OBrace, OBRACE, r#"\{"#);
-token_with_pos!(CBrace, CBRACE, r#"\}"#);
-token_with_pos!(OParen, OPAREN, r#"\("#);
-token_with_pos!(CParen, CPAREN, r#"\)"#);
-token_with_pos!(Colon, COLON, ":");
-token_with_pos!(At, AT, "@");
-token_with_pos!(Hash, HASH, "#");
-token_with_pos!(Comma, COMMA, ",");
-token_with_pos!(Pipe, PIPE, r#"\|"#);
-token_with_pos!(True, TRUE, "true");
-token_with_pos!(False, FALSE, "false");
-token_with_pos!(Return, RETURN, "return");
+token_with_span!(Let, LET, "let");
+token_with_span!(Self_, SELF, "self");
+token_with_span!(Eq, EQ, "=");
+token_with_span!(Semicolon, SEMICOLON, ";");
+token_with_span!(OBracket, OBRACKET, r#"\["#);
+token_with_span!(CBracket, CBRACKET, r#"\]"#);
+token_with_span!(OBrace, OBRACE, r#"\{"#);
+token_with_span!(CBrace, CBRACE, r#"\}"#);
+token_with_span!(OParen, OPAREN, r#"\("#);
+token_with_span!(CParen, CPAREN, r#"\)"#);
+token_with_span!(Colon, COLON, ":");
+token_with_span!(At, AT, "@");
+token_with_span!(Hash, HASH, "#");
+token_with_span!(Comma, COMMA, ",");
+token_with_span!(Pipe, PIPE, r#"\|"#);
+token_with_span!(True, TRUE, "true");
+token_with_span!(False, FALSE, "false");
+token_with_span!(Return, RETURN, "return");
 
 lazy_static! {
     static ref CLASS_NAME: Regex = Regex::new(r#"\A([A-Z][a-zA-Z_]*)"#).unwrap();
@@ -149,12 +149,12 @@ lazy_static! {
 #[derive(Eq, PartialEq, Debug)]
 pub struct Name<'a> {
     pub name: &'a str,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 impl<'a> Name<'a> {
-    fn new(name: &'a str, pos: Pos) -> Self {
-        Self { name, pos }
+    fn new(name: &'a str, span: Span) -> Self {
+        Self { name, span }
     }
 
     #[inline]
@@ -192,12 +192,12 @@ impl<'a> fmt::Display for Name<'a> {
 #[derive(Eq, PartialEq, Debug)]
 pub struct ClassName<'a> {
     pub name: &'a str,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 impl<'a> ClassName<'a> {
-    fn new(name: &'a str, pos: Pos) -> Self {
-        Self { name, pos }
+    fn new(name: &'a str, span: Span) -> Self {
+        Self { name, span }
     }
 
     #[inline]
@@ -235,12 +235,12 @@ impl<'a> fmt::Display for ClassName<'a> {
 #[derive(Eq, PartialEq, Debug)]
 pub struct Digit {
     pub digit: i32,
-    pub pos: Pos,
+    pub span: Span,
 }
 
 impl Digit {
-    fn new(digit: i32, pos: Pos) -> Self {
-        Self { digit, pos }
+    fn new(digit: i32, span: Span) -> Self {
+        Self { digit, span }
     }
 
     #[inline]
@@ -277,7 +277,7 @@ impl fmt::Display for Digit {
 
 struct Lexer<'a> {
     program: &'a str,
-    pos: usize,
+    span: usize,
     tokens: Vec<Token<'a>>,
 }
 
@@ -285,7 +285,7 @@ impl<'a> Lexer<'a> {
     fn lex(program: &'a str) -> Vec<Token<'a>> {
         let mut lexer = Self {
             program,
-            pos: 0,
+            span: 0,
             tokens: vec![],
         };
 
@@ -301,17 +301,17 @@ impl<'a> Lexer<'a> {
     }
 
     fn at_end(&self) -> bool {
-        self.pos >= self.program.len()
+        self.span >= self.program.len()
     }
 
     fn step(&mut self) {
         macro_rules! scan_for {
             ( $ty:ty ) => {
                 if let Some(capture) = self.scan(<$ty>::regex()) {
-                    let token = <$ty>::new(self.new_pos(capture.len()));
+                    let token = <$ty>::new(self.new_span_with_length(capture.len()));
                     let token = Token::from(token);
                     self.tokens.push(token);
-                    self.pos += capture.len();
+                    self.span += capture.len();
                     return;
                 }
             };
@@ -321,7 +321,7 @@ impl<'a> Lexer<'a> {
                     let token = ($make_token)(capture);
                     let token = Token::from(token);
                     self.tokens.push(token);
-                    self.pos += capture.len();
+                    self.span += capture.len();
                     return;
                 }
             };
@@ -350,19 +350,19 @@ impl<'a> Lexer<'a> {
 
         scan_for!(ClassName, |capture: &'a str| ClassName::new(
             capture,
-            self.new_pos(capture.len())
+            self.new_span_with_length(capture.len())
         ));
 
         scan_for!(Name, |capture: &'a str| Name::new(
             capture,
-            self.new_pos(capture.len())
+            self.new_span_with_length(capture.len())
         ));
 
         scan_for!(Digit, |capture: &'a str| {
             let digit = capture
                 .parse::<i32>()
                 .expect("tokenized a digit, but parsing to i32 didn't work");
-            Digit::new(digit, self.new_pos(capture.len()))
+            Digit::new(digit, self.new_span_with_length(capture.len()))
         });
 
         if self.at_end() {
@@ -373,7 +373,7 @@ impl<'a> Lexer<'a> {
         let mut f = String::new();
         writeln!(f, "Unexpected token!").unwrap();
         writeln!(f).unwrap();
-        writeln!(f, "{:?}", &self.program[self.pos..]).unwrap();
+        writeln!(f, "{:?}", &self.program[self.span..]).unwrap();
         writeln!(f).unwrap();
         writeln!(f, "Tokens:").unwrap();
         writeln!(f, "{:#?}", self.tokens).unwrap();
@@ -381,7 +381,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan(&self, re: &Regex) -> Option<&'a str> {
-        let program = &self.program[self.pos..];
+        let program = &self.program[self.span..];
 
         re.captures(program).map(|captures| {
             let match_ = &captures[0];
@@ -390,19 +390,19 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip(&mut self, re: &Regex) -> bool {
-        let program = &self.program[self.pos..];
+        let program = &self.program[self.span..];
 
         if let Some(captures) = re.captures(program) {
             let match_ = &captures[0];
-            self.pos += match_.len();
+            self.span += match_.len();
             true
         } else {
             false
         }
     }
 
-    fn new_pos(&self, len: usize) -> Pos {
-        Pos::new(self.pos, self.pos + len)
+    fn new_span_with_length(&self, len: usize) -> Span {
+        Span::new(self.span, self.span + len)
     }
 }
 
@@ -448,11 +448,11 @@ mod test {
         assert_eq!(
             lex(program),
             vec![
-                Token::Let(Let::new(Pos::new(0, 3))),
-                Token::Name(Name::new("number", Pos::from_with(4, "number"))),
-                Token::Eq(Eq::new(Pos::from_with(11, "="))),
-                Token::Digit(Digit::new(1, Pos::from_with(13, "1"))),
-                Token::Semicolon(Semicolon::new(Pos::from_with(14, ";"))),
+                Token::Let(Let::new(Span::new(0, 3))),
+                Token::Name(Name::new("number", Span::from_with(4, "number"))),
+                Token::Eq(Eq::new(Span::from_with(11, "="))),
+                Token::Digit(Digit::new(1, Span::from_with(13, "1"))),
+                Token::Semicolon(Semicolon::new(Span::from_with(14, ";"))),
             ]
         );
     }
@@ -460,10 +460,10 @@ mod test {
     #[test]
     fn bool() {
         let program = "true";
-        assert_eq!(lex(program), vec![Token::True(True::new(Pos::new(0, 4)))]);
+        assert_eq!(lex(program), vec![Token::True(True::new(Span::new(0, 4)))]);
 
         let program = "false";
-        assert_eq!(lex(program), vec![Token::False(False::new(Pos::new(0, 5)))]);
+        assert_eq!(lex(program), vec![Token::False(False::new(Span::new(0, 5)))]);
     }
 
     #[test]
@@ -472,13 +472,13 @@ mod test {
         assert_eq!(
             lex(program),
             vec![
-                Token::OBracket(OBracket::new(Pos::from_with(0, "["))),
-                Token::Name(Name::new("user", Pos::from_with(1, "user"))),
-                Token::Name(Name::new("set", Pos::from_with(6, "set"))),
-                Token::Name(Name::new("id", Pos::from_with(10, "id"))),
-                Token::Colon(Colon::new(Pos::from_with(12, ":"))),
-                Token::Digit(Digit::new(123, Pos::from_with(14, "123"))),
-                Token::CBracket(CBracket::new(Pos::from_with(17, "]"))),
+                Token::OBracket(OBracket::new(Span::from_with(0, "["))),
+                Token::Name(Name::new("user", Span::from_with(1, "user"))),
+                Token::Name(Name::new("set", Span::from_with(6, "set"))),
+                Token::Name(Name::new("id", Span::from_with(10, "id"))),
+                Token::Colon(Colon::new(Span::from_with(12, ":"))),
+                Token::Digit(Digit::new(123, Span::from_with(14, "123"))),
+                Token::CBracket(CBracket::new(Span::from_with(17, "]"))),
             ]
         );
     }

@@ -39,12 +39,12 @@ fn ok_or_exit<T, E: std::error::Error>(value: Result<T, E>) -> T {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub struct Pos {
+pub struct Span {
     pub from: usize,
     pub to: usize,
 }
 
-impl Pos {
+impl Span {
     pub fn new(from: usize, to: usize) -> Self {
         Self { from, to }
     }
