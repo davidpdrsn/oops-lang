@@ -7,36 +7,45 @@ This is a small programming language I'm working on in my spare time. Currently 
 Small talk/objective-c syntax where conditionals are implemented with polymorphic methods. Nothing out of the ordinary.
 
 ```
-let User = [Class subclass ivars: [@id]];
+// Create class named "User"
+[Class subclass name: #User fields: [#id]];
 
-[User def: #set, do: |id:| {
-  @id = (id);
+// Define "User#set" method
+[User def: #set do: |id:| {
+    let @id = id;
 }];
 
-[User def: #follow, do: |user:, source:, block:| {
-  [Follow create followee_id: [self id], follower_id: [user id], source: source];
+// Define "User#follow" method
+[User def: #follow do: |user: source: block:| {
+    let follow = [Follow new followee_id: [self id] follower_id: [user id] source: source];
+    [follow save];
 
-  [block if: || {
-    [block call];
-  }];
+    [block if then: || {
+        [block call];
+    } else: || {}];
 }];
 
-[User def: #id, do: || { @id }];
+// Define "User#id" method
+[User def: #id do: || { return @id; }];
 
-[User def: #next_match, do: |exclude_crowdsourced:| { @id }];
+// Define "User#next_match" method
+[User def: #next_match do: |exclude_crowdsourced:| {
+    return @id;
+}];
 
+// Make a variable
 let user = [User new];
+
+// Call some methods
 [user id];
 [user set id: 123];
-[user next_match exclude_crowdsourced: true]
-
-[user follow user: other_user, source: 123]
+[user next_match exclude_crowdsourced: true];
+[user follow user: other_user source: 123];
 ```
 
 ## TODO
 
 - [x] Lexing
-- [ ] Parsing
-    - Parsing of `let number = 1;` is working.
+- [x] Parsing
 - [ ] Interpretation
 - [ ] Compilation to JavaScript
