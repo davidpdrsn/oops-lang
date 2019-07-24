@@ -404,22 +404,6 @@ impl<'a> Lexer<'a> {
     fn new_pos(&self, len: usize) -> Pos {
         Pos::new(self.pos, self.pos + len)
     }
-
-    fn ignore_leading_whitespace(&mut self) {
-        if self.at_end() {
-            return;
-        }
-
-        let rest = &self.program[self.pos..];
-
-        match rest.chars().next() {
-            Some(' ') | Some('\n') | Some('\t') => {
-                self.pos += 1;
-                self.ignore_leading_whitespace();
-            }
-            _ => return,
-        }
-    }
 }
 
 pub trait Indent {
