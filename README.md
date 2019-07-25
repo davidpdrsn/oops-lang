@@ -46,8 +46,13 @@ let user = [User new];
 ## TODO
 
 - [x] Lexing
+    - [ ] Good errors
 - [x] Parsing
+    - [ ] Good errors
 - [ ] Interpretation
     - [x] Build class vtable
-    - [ ] Evaluate statements;
+    - [ ] Return output from Visitor
+    - [ ] Support Errors in Visitor methods
+    - [ ] Evaluate statements
 - [ ] Compilation to JavaScript
+- [ ] Vim syntax highlighting
