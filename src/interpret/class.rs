@@ -12,7 +12,7 @@ pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> ClassVTable<'a> {
 
 fn find_classes<'a>(ast: &'a Ast<'a>) -> ClassVTable<'a> {
     let mut f = FindClasses::default();
-    visit_ast(&mut f, ast);
+    visit_ast(&mut f, ast).expect("TODO");
     ClassVTable { table: f.table }
 }
 
@@ -55,7 +55,7 @@ struct FindMethods<'a> {
 
 fn find_methods<'a>(ast: &'a Ast<'a>, class_vtable: ClassVTable<'a>) -> ClassVTable<'a> {
     let mut f = FindMethods { class_vtable };
-    visit_ast(&mut f, ast);
+    visit_ast(&mut f, ast).expect("TODO");
     f.class_vtable
 }
 

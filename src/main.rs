@@ -1,4 +1,5 @@
 // #![deny(unused_imports)]
+#![deny(unused_must_use)]
 
 mod interpret;
 mod lex;
