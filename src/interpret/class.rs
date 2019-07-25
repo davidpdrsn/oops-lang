@@ -22,7 +22,9 @@ struct FindClasses<'a> {
 }
 
 impl<'a> Visitor<'a> for FindClasses<'a> {
-    fn visit_define_class(&mut self, node: &'a ast::DefineClass<'a>) {
+    type Error = ();
+
+    fn visit_define_class(&mut self, node: &'a ast::DefineClass<'a>) -> Result<(), Self::Error> {
         let name = &node.name.class_name.0;
 
         let fields = node
@@ -42,6 +44,8 @@ impl<'a> Visitor<'a> for FindClasses<'a> {
         };
 
         self.table.insert(name.name, class);
+
+        Ok(())
     }
 }
 
@@ -56,7 +60,9 @@ fn find_methods<'a>(ast: &'a Ast<'a>, class_vtable: ClassVTable<'a>) -> ClassVTa
 }
 
 impl<'a> Visitor<'a> for FindMethods<'a> {
-    fn visit_define_method(&mut self, node: &'a ast::DefineMethod<'a>) {
+    type Error = ();
+
+    fn visit_define_method(&mut self, node: &'a ast::DefineMethod<'a>) -> Result<(), Self::Error> {
         let method_name = &node.method_name.ident;
 
         let block = &node.block;
@@ -77,6 +83,8 @@ impl<'a> Visitor<'a> for FindMethods<'a> {
             .get_mut(class_name)
             .expect("Undefined class");
         class.methods.insert(method_name.name, method);
+
+        Ok(())
     }
 }
 

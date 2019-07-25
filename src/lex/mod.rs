@@ -463,7 +463,10 @@ mod test {
         assert_eq!(lex(program), vec![Token::True(True::new(Span::new(0, 4)))]);
 
         let program = "false";
-        assert_eq!(lex(program), vec![Token::False(False::new(Span::new(0, 5)))]);
+        assert_eq!(
+            lex(program),
+            vec![Token::False(False::new(Span::new(0, 5)))]
+        );
     }
 
     #[test]
