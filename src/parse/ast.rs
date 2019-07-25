@@ -27,6 +27,8 @@ macro_rules! impl_into {
     };
 }
 
+pub type Ast<'a> = Vec<Stmt<'a>>;
+
 //
 // Statements
 //

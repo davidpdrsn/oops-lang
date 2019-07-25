@@ -3,6 +3,8 @@
 use crate::parse::*;
 
 pub trait Visitor<'a> {
+    fn visit_ast(&mut self, _: &'a Ast<'a>) {}
+
     fn visit_stmt(&mut self, _: &'a Stmt<'a>) {}
 
     fn visit_let_local(&mut self, _: &'a LetLocal<'a>) {}
@@ -44,7 +46,15 @@ pub trait Visitor<'a> {
     fn visit_self(&mut self, _: &'a Self_) {}
 }
 
-pub fn visit_stmt<'a, V: Visitor<'a>>(v: &mut V, node: &'a Stmt<'a>) {
+pub fn visit_ast<'a, V: Visitor<'a>>(v: &mut V, node: &'a Ast<'a>) {
+    v.visit_ast(node);
+
+    for stmt in node {
+        visit_stmt(v, stmt);
+    }
+}
+
+fn visit_stmt<'a, V: Visitor<'a>>(v: &mut V, node: &'a Stmt<'a>) {
     v.visit_stmt(node);
 
     match node {

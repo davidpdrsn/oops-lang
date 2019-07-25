@@ -1,5 +1,5 @@
 use super::{
-    visitor::{visit_stmt, Visitor},
+    visitor::{visit_ast, Visitor},
     Ast, VTable,
 };
 use crate::parse::{self as ast, Ident};
@@ -12,9 +12,7 @@ pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> ClassVTable<'a> {
 
 fn find_classes<'a>(ast: &'a Ast<'a>) -> ClassVTable<'a> {
     let mut f = FindClasses::default();
-    for stmt in ast {
-        visit_stmt(&mut f, stmt);
-    }
+    visit_ast(&mut f, ast);
     ClassVTable { table: f.table }
 }
 
@@ -53,9 +51,7 @@ struct FindMethods<'a> {
 
 fn find_methods<'a>(ast: &'a Ast<'a>, class_vtable: ClassVTable<'a>) -> ClassVTable<'a> {
     let mut f = FindMethods { class_vtable };
-    for stmt in ast {
-        visit_stmt(&mut f, stmt);
-    }
+    visit_ast(&mut f, ast);
     f.class_vtable
 }
 

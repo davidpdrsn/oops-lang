@@ -2,10 +2,8 @@ mod class;
 mod visitor;
 
 use self::class::find_classes_and_methods;
-use crate::parse as ast;
+use crate::parse::Ast;
 use std::{collections::HashMap, fmt};
-
-type Ast<'a> = Vec<ast::Stmt<'a>>;
 
 type VTable<'a, T> = HashMap<&'a str, T>;
 
