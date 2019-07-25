@@ -1,39 +1,40 @@
 use crate::Span;
 use std::{fmt, io};
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<'a, T> = std::result::Result<T, Error<'a>>;
 
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<'a> {
     LexError {
         at: usize,
     },
     IoError(io::Error),
+    // TODO: Add typed fields here instead of just a String
     ParseError(String),
     ClassNotDefined {
-        class: String,
+        class: &'a str,
         span: Span,
     },
     ClassAlreadyDefined {
-        class: String,
+        class: &'a str,
         first_span: Span,
         second_span: Span,
     },
     MethodAlreadyDefined {
-        class: String,
-        method: String,
+        class: &'a str,
+        method: &'a str,
         first_span: Span,
         second_span: Span,
     },
 }
 
-impl From<io::Error> for Error {
+impl From<io::Error> for Error<'_> {
     fn from(other: io::Error) -> Self {
         Error::IoError(other)
     }
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for Error<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::LexError { at } => write!(f, "Unexpected token at {}", at),
@@ -41,7 +42,7 @@ impl fmt::Display for Error {
             Error::ParseError(other) => write!(f, "{}", other),
             Error::ClassNotDefined {
                 class,
-                span: _,
+                ..
             } => write!(
                 f,
                 "The class {} is not defined",
@@ -73,7 +74,7 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error<'_> {}
 
 macro_rules! assert_error {
     ($result:expr, $pat:pat) => {

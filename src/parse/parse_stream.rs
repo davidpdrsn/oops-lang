@@ -18,7 +18,7 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_token<T: lex::Parse<'a>>(&mut self) -> Result<&T> {
+    pub fn parse_token<T: lex::Parse<'a>>(&mut self) -> Result<'a, &T> {
         let token = &self.tokens[self.current_position];
         self.current_position += 1;
         let node = T::from_token(token);
@@ -47,7 +47,7 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_node<T: Parse<'a>>(&mut self) -> Result<T> {
+    pub fn parse_node<T: Parse<'a>>(&mut self) -> Result<'a, T> {
         T::parse(self)
     }
 
@@ -62,7 +62,7 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_specific_ident(&mut self, name: &str) -> Result<Ident<'a>> {
+    pub fn parse_specific_ident(&mut self, name: &str) -> Result<'a, Ident<'a>> {
         let ident = self.parse_node::<Ident>()?;
 
         if ident.name == name {
@@ -75,7 +75,7 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_specific_class_name(&mut self, name: &str) -> Result<ClassName<'a>> {
+    pub fn parse_specific_class_name(&mut self, name: &str) -> Result<'a, ClassName<'a>> {
         let class_name = self.parse_node::<ClassName>()?;
 
         if class_name.0.name == name {
@@ -130,5 +130,5 @@ impl<'a> ParseStream<'a> {
 }
 
 pub trait Parse<'a>: Sized {
-    fn parse(stream: &mut ParseStream<'a>) -> Result<Self>;
+    fn parse(stream: &mut ParseStream<'a>) -> Result<'a, Self>;
 }

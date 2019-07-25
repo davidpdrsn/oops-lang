@@ -24,24 +24,22 @@ struct Opt {
 }
 
 fn main() {
-    match try_main() {
+    let opt = Opt::from_args();
+    let source_text = fs::read_to_string(opt.file).unwrap();
+
+    let tokens = ok_or_exit(lex(&source_text));
+    let ast = ok_or_exit(parse(&tokens));
+    ok_or_exit(interpret(&ast));
+}
+
+fn ok_or_exit<T>(result: error::Result<'_, T>) -> T {
+    match result {
         Ok(v) => v,
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(1)
         }
     }
-}
-
-fn try_main() -> error::Result<()> {
-    let opt = Opt::from_args();
-    let source_text = fs::read_to_string(opt.file)?;
-
-    let tokens = lex(&source_text)?;
-    let ast = parse(&tokens)?;
-    interpret(&ast)?;
-
-    Ok(())
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone)]

@@ -282,7 +282,7 @@ struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    fn lex(program: &'a str) -> Result<Vec<Token<'a>>> {
+    fn lex(program: &'a str) -> Result<'a, Vec<Token<'a>>> {
         let mut lexer = Self {
             program,
             current_position: 0,
@@ -304,7 +304,7 @@ impl<'a> Lexer<'a> {
         self.current_position >= self.program.len()
     }
 
-    fn step(&mut self) -> Result<()> {
+    fn step(&mut self) -> Result<'a, ()> {
         macro_rules! scan_for {
             ( $ty:ty ) => {
                 if let Some(capture) = self.scan(<$ty>::regex()) {

@@ -9,12 +9,12 @@ use crate::{
 };
 use std::collections::HashMap;
 
-pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> Result<ClassVTable<'a>> {
+pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> Result<'a, ClassVTable<'a>> {
     let class_vtable = find_classes(ast)?;
     find_methods(ast, class_vtable)
 }
 
-fn find_classes<'a>(ast: &'a Ast<'a>) -> Result<ClassVTable<'a>> {
+fn find_classes<'a>(ast: &'a Ast<'a>) -> Result<'a, ClassVTable<'a>> {
     let mut f = FindClasses::default();
     visit_ast(&mut f, ast)?;
     Ok(ClassVTable { table: f.table })
@@ -26,9 +26,9 @@ struct FindClasses<'a> {
 }
 
 impl<'a> Visitor<'a> for FindClasses<'a> {
-    type Error = Error;
+    type Error = Error<'a>;
 
-    fn visit_define_class(&mut self, node: &'a ast::DefineClass<'a>) -> Result<()> {
+    fn visit_define_class(&mut self, node: &'a ast::DefineClass<'a>) -> Result<'a, ()> {
         let name = &node.name.class_name.0;
         let key = name.name;
 
@@ -47,12 +47,12 @@ impl<'a> Visitor<'a> for FindClasses<'a> {
 impl<'a> FindClasses<'a> {
     fn check_for_existing_class_with_same_name(
         &self,
-        key: &str,
+        key: &'a str,
         node: &'a ast::DefineClass<'a>,
-    ) -> Result<()> {
+    ) -> Result<'a, ()> {
         if let Some(other) = self.table.get(key) {
             Err(Error::ClassAlreadyDefined {
-                class: key.to_string(),
+                class: &key,
                 first_span: other.span,
                 second_span: node.span,
             })
@@ -77,16 +77,19 @@ struct FindMethods<'a> {
     class_vtable: ClassVTable<'a>,
 }
 
-fn find_methods<'a>(ast: &'a Ast<'a>, class_vtable: ClassVTable<'a>) -> Result<ClassVTable<'a>> {
+fn find_methods<'a>(
+    ast: &'a Ast<'a>,
+    class_vtable: ClassVTable<'a>,
+) -> Result<'a, ClassVTable<'a>> {
     let mut f = FindMethods { class_vtable };
     visit_ast(&mut f, ast)?;
     Ok(f.class_vtable)
 }
 
 impl<'a> Visitor<'a> for FindMethods<'a> {
-    type Error = Error;
+    type Error = Error<'a>;
 
-    fn visit_define_method(&mut self, node: &'a ast::DefineMethod<'a>) -> Result<()> {
+    fn visit_define_method(&mut self, node: &'a ast::DefineMethod<'a>) -> Result<'a, ()> {
         let method_name = &node.method_name.ident;
         let key = method_name.name;
 
@@ -96,7 +99,7 @@ impl<'a> Visitor<'a> for FindMethods<'a> {
             let class = self
                 .get_class(class_name)
                 .ok_or_else(|| Error::ClassNotDefined {
-                    class: class_name.to_string(),
+                    class: class_name,
                     span: node.span,
                 })?;
             self.check_for_existing_method_with_same_name(class, key, node)?;
@@ -107,7 +110,7 @@ impl<'a> Visitor<'a> for FindMethods<'a> {
         let class = self
             .get_class_mut(class_name)
             .ok_or_else(|| Error::ClassNotDefined {
-                class: class_name.to_string(),
+                class: class_name,
                 span: node.span,
             })?;
         class.methods.insert(key, method);
@@ -128,13 +131,13 @@ impl<'a> FindMethods<'a> {
     fn check_for_existing_method_with_same_name(
         &self,
         class: &Class<'a>,
-        key: &str,
+        key: &'a str,
         node: &'a ast::DefineMethod<'a>,
-    ) -> Result<()> {
+    ) -> Result<'a, ()> {
         if let Some(other) = class.methods.get(key) {
             return Err(Error::MethodAlreadyDefined {
-                class: class.name.name.to_string(),
-                method: key.to_string(),
+                class: class.name.name,
+                method: key,
                 first_span: other.span,
                 second_span: node.span,
             });
