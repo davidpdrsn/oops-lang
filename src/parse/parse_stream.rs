@@ -1,6 +1,9 @@
 use super::ast::*;
-use crate::lex::{self, Token};
-use std::fmt::{self, Debug};
+use crate::{
+    error::{Error, Result},
+    lex::{self, Token},
+};
+use std::fmt::Debug;
 
 pub struct ParseStream<'a> {
     tokens: &'a Vec<Token<'a>>,
@@ -15,13 +18,13 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_token<T: lex::Parse<'a>>(&mut self) -> Result<&T, ParseError> {
+    pub fn parse_token<T: lex::Parse<'a>>(&mut self) -> Result<&T> {
         let token = &self.tokens[self.current_position];
         self.current_position += 1;
         let node = T::from_token(token);
 
         node.ok_or_else(|| {
-            ParseError::Error(format!(
+            Error::ParseError(format!(
                 "Expected '{}' but got '{}'",
                 T::debug_name(),
                 token
@@ -44,7 +47,7 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_node<T: Parse<'a>>(&mut self) -> Result<T, ParseError> {
+    pub fn parse_node<T: Parse<'a>>(&mut self) -> Result<T> {
         T::parse(self)
     }
 
@@ -59,26 +62,26 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn parse_specific_ident(&mut self, name: &str) -> Result<Ident<'a>, ParseError> {
+    pub fn parse_specific_ident(&mut self, name: &str) -> Result<Ident<'a>> {
         let ident = self.parse_node::<Ident>()?;
 
         if ident.name == name {
             Ok(ident)
         } else {
-            Err(ParseError::Error(format!(
+            Err(Error::ParseError(format!(
                 "Expected class named '{}' but got '{}'",
                 name, ident.name
             )))
         }
     }
 
-    pub fn parse_specific_class_name(&mut self, name: &str) -> Result<ClassName<'a>, ParseError> {
+    pub fn parse_specific_class_name(&mut self, name: &str) -> Result<ClassName<'a>> {
         let class_name = self.parse_node::<ClassName>()?;
 
         if class_name.0.name == name {
             Ok(class_name)
         } else {
-            Err(ParseError::Error(format!(
+            Err(Error::ParseError(format!(
                 "Expected class named '{}' but got '{}'",
                 name, class_name.0.name
             )))
@@ -127,20 +130,5 @@ impl<'a> ParseStream<'a> {
 }
 
 pub trait Parse<'a>: Sized {
-    fn parse(stream: &mut ParseStream<'a>) -> Result<Self, ParseError>;
+    fn parse(stream: &mut ParseStream<'a>) -> Result<Self>;
 }
-
-#[derive(Debug)]
-pub enum ParseError {
-    Error(String),
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ParseError::Error(reason) => write!(f, "Parse error: {}", reason),
-        }
-    }
-}
-
-impl std::error::Error for ParseError {}

@@ -2,15 +2,13 @@ mod class;
 mod visitor;
 
 use self::class::find_classes_and_methods;
-use crate::parse::Ast;
+use crate::{error::Result, parse::Ast};
 use std::{collections::HashMap, fmt};
 
 type VTable<'a, T> = HashMap<&'a str, T>;
 
-pub fn interpret<'a>(ast: &'a Ast<'a>) -> Result<(), InterpretError> {
-    let class_vtable = find_classes_and_methods(ast);
-
-    dbg!(class_vtable);
+pub fn interpret<'a>(ast: &'a Ast<'a>) -> Result<()> {
+    let class_vtable = find_classes_and_methods(ast)?;
 
     Ok(())
 }

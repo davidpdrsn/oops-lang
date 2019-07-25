@@ -51,6 +51,7 @@ let user = [User new];
     - [ ] Good errors
 - [ ] Interpretation
     - [x] Build class vtable
+    - [ ] Namespace and imports
     - [ ] Return output from Visitor
     - [ ] Support Errors in Visitor methods
     - [ ] Evaluate statements

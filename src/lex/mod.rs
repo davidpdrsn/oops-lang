@@ -1,9 +1,9 @@
-use crate::Span;
+use crate::{error::{Error, Result}, Span};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fmt::{self, Write};
 
-pub fn lex<'a>(program: &'a str) -> Vec<Token<'a>> {
+pub fn lex<'a>(program: &'a str) -> Result<Vec<Token<'a>>> {
     Lexer::lex(program)
 }
 
@@ -277,15 +277,15 @@ impl fmt::Display for Digit {
 
 struct Lexer<'a> {
     program: &'a str,
-    span: usize,
+    current_position: usize,
     tokens: Vec<Token<'a>>,
 }
 
 impl<'a> Lexer<'a> {
-    fn lex(program: &'a str) -> Vec<Token<'a>> {
+    fn lex(program: &'a str) -> Result<Vec<Token<'a>>> {
         let mut lexer = Self {
             program,
-            span: 0,
+            current_position: 0,
             tokens: vec![],
         };
 
@@ -293,26 +293,26 @@ impl<'a> Lexer<'a> {
             if lexer.at_end() {
                 break;
             } else {
-                lexer.step();
+                lexer.step()?;
             }
         }
 
-        lexer.tokens
+        Ok(lexer.tokens)
     }
 
     fn at_end(&self) -> bool {
-        self.span >= self.program.len()
+        self.current_position >= self.program.len()
     }
 
-    fn step(&mut self) {
+    fn step(&mut self) -> Result<()> {
         macro_rules! scan_for {
             ( $ty:ty ) => {
                 if let Some(capture) = self.scan(<$ty>::regex()) {
                     let token = <$ty>::new(self.new_span_with_length(capture.len()));
                     let token = Token::from(token);
                     self.tokens.push(token);
-                    self.span += capture.len();
-                    return;
+                    self.current_position += capture.len();
+                    return Ok(());
                 }
             };
 
@@ -321,8 +321,8 @@ impl<'a> Lexer<'a> {
                     let token = ($make_token)(capture);
                     let token = Token::from(token);
                     self.tokens.push(token);
-                    self.span += capture.len();
-                    return;
+                    self.current_position += capture.len();
+                    return Ok(());
                 }
             };
         }
@@ -366,22 +366,14 @@ impl<'a> Lexer<'a> {
         });
 
         if self.at_end() {
-            return;
+            return Ok(());
         }
 
-        // TODO: Turn this error into a Result
-        let mut f = String::new();
-        writeln!(f, "Unexpected token!").unwrap();
-        writeln!(f).unwrap();
-        writeln!(f, "{:?}", &self.program[self.span..]).unwrap();
-        writeln!(f).unwrap();
-        writeln!(f, "Tokens:").unwrap();
-        writeln!(f, "{:#?}", self.tokens).unwrap();
-        panic!("{}", f);
+        Err(Error::LexError { at: self.current_position })
     }
 
     fn scan(&self, re: &Regex) -> Option<&'a str> {
-        let program = &self.program[self.span..];
+        let program = &self.program[self.current_position..];
 
         re.captures(program).map(|captures| {
             let match_ = &captures[0];
@@ -390,11 +382,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip(&mut self, re: &Regex) -> bool {
-        let program = &self.program[self.span..];
+        let program = &self.program[self.current_position..];
 
         if let Some(captures) = re.captures(program) {
             let match_ = &captures[0];
-            self.span += match_.len();
+            self.current_position += match_.len();
             true
         } else {
             false
@@ -402,7 +394,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn new_span_with_length(&self, len: usize) -> Span {
-        Span::new(self.span, self.span + len)
+        Span::new(self.current_position, self.current_position + len)
     }
 }
 
@@ -436,17 +428,17 @@ mod test {
     #[test]
     fn empty() {
         let program = "";
-        assert_eq!(lex(program), vec![]);
+        assert_eq!(lex(program).unwrap(), vec![]);
 
         let program = " ";
-        assert_eq!(lex(program), vec![]);
+        assert_eq!(lex(program).unwrap(), vec![]);
     }
 
     #[test]
     fn let_number() {
         let program = "let number = 1; ";
         assert_eq!(
-            lex(program),
+            lex(program).unwrap(),
             vec![
                 Token::Let(Let::new(Span::new(0, 3))),
                 Token::Name(Name::new("number", Span::from_with(4, "number"))),
@@ -460,11 +452,11 @@ mod test {
     #[test]
     fn bool() {
         let program = "true";
-        assert_eq!(lex(program), vec![Token::True(True::new(Span::new(0, 4)))]);
+        assert_eq!(lex(program).unwrap(), vec![Token::True(True::new(Span::new(0, 4)))]);
 
         let program = "false";
         assert_eq!(
-            lex(program),
+            lex(program).unwrap(),
             vec![Token::False(False::new(Span::new(0, 5)))]
         );
     }
@@ -473,7 +465,7 @@ mod test {
     fn let_call() {
         let program = "[user set id: 123]\n";
         assert_eq!(
-            lex(program),
+            lex(program).unwrap(),
             vec![
                 Token::OBracket(OBracket::new(Span::from_with(0, "["))),
                 Token::Name(Name::new("user", Span::from_with(1, "user"))),
@@ -488,12 +480,12 @@ mod test {
 
     #[test]
     fn ignores_comments_with_newline() {
-        lex("// Just a comment\n");
-        lex("// one\n// two\n");
-        lex("let n = 1; // a comment");
-        lex("let n = 1; // a comment\n");
-        lex("// Just a comment");
-        lex("// one\n// two");
+        lex("// Just a comment\n").unwrap();
+        lex("// one\n// two\n").unwrap();
+        lex("let n = 1; // a comment").unwrap();
+        lex("let n = 1; // a comment\n").unwrap();
+        lex("// Just a comment").unwrap();
+        lex("// one\n// two").unwrap();
 
         let program = vec![
             "// a comment\n",
@@ -505,6 +497,6 @@ mod test {
             "// a comment\n",
         ]
         .join("");
-        lex(&program);
+        lex(&program).unwrap();
     }
 }

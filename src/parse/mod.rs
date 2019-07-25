@@ -1,17 +1,20 @@
 mod ast;
 mod parse_stream;
 
-use self::parse_stream::{ParseError, ParseStream};
-use crate::lex::Token;
+use self::parse_stream::ParseStream;
+use crate::{
+    error::{Error, Result},
+    lex::Token,
+};
 
 pub use ast::*;
 
-pub fn parse<'a>(tokens: &'a Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>, ParseError> {
+pub fn parse<'a>(tokens: &'a Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>> {
     let mut stream = ParseStream::new(tokens);
     let acc = stream.parse_many::<Stmt>();
 
     if !stream.at_eof() {
-        Err(ParseError::Error("Expected EOF, but wasn't".to_string()))
+        Err(Error::ParseError("Expected EOF, but wasn't".to_string()))
     } else {
         Ok(acc)
     }
@@ -26,8 +29,8 @@ mod test {
     #[test]
     fn let_digit() {
         let program = "let number = 1;";
-        let tokens = lex(&program);
-        let ast = ok_or_panic(parse(&tokens));
+        let tokens = lex(&program).unwrap();
+        let ast = parse(&tokens).unwrap();
 
         assert_eq!(
             ast,
@@ -48,8 +51,8 @@ mod test {
     #[test]
     fn let_name() {
         let program = "let a = b;";
-        let tokens = lex(&program);
-        let ast = ok_or_panic(parse(&tokens));
+        let tokens = lex(&program).unwrap();
+        let ast = parse(&tokens).unwrap();
 
         assert_eq!(
             ast,
@@ -65,15 +68,5 @@ mod test {
                 span: Span::new(0, 10),
             })]
         );
-    }
-
-    fn ok_or_panic<T, E: std::error::Error>(value: Result<T, E>) -> T {
-        match value {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("{}\n", e);
-                panic!("error!")
-            }
-        }
     }
 }

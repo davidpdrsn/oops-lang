@@ -1,6 +1,8 @@
 // #![deny(unused_imports)]
 #![deny(unused_must_use)]
 
+#[macro_use]
+mod error;
 mod interpret;
 mod lex;
 mod parse;
@@ -22,22 +24,24 @@ struct Opt {
 }
 
 fn main() {
-    let opt = Opt::from_args();
-    let source_text = ok_or_exit(fs::read_to_string(opt.file));
-
-    let tokens = lex(&source_text);
-    let ast = ok_or_exit(parse(&tokens));
-    ok_or_exit(interpret(&ast));
-}
-
-fn ok_or_exit<T, E: std::error::Error>(value: Result<T, E>) -> T {
-    match value {
+    match try_main() {
         Ok(v) => v,
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(1)
         }
     }
+}
+
+fn try_main() -> error::Result<()> {
+    let opt = Opt::from_args();
+    let source_text = fs::read_to_string(opt.file)?;
+
+    let tokens = lex(&source_text)?;
+    let ast = parse(&tokens)?;
+    interpret(&ast)?;
+
+    Ok(())
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone)]
@@ -49,6 +53,12 @@ pub struct Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Span({}..{})", self.from, self.to)
+    }
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} to {}", self.from, self.to)
     }
 }
 
