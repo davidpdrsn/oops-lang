@@ -1,6 +1,6 @@
 use crate::prep::ClassVTable;
 use crate::{
-    ast::{self, visit_ast, Ast, Visitor},
+    ast::{visit_ast, Ast, Visitor, *},
     error::{Error, Result},
 };
 use std::collections::HashMap;
@@ -15,13 +15,14 @@ pub fn interpret<'a>(mut interpreter: &'a mut Interpreter<'a>, ast: &'a Ast<'a>)
 }
 
 #[derive(Debug)]
-enum Value {
+enum Value<'a> {
     Nil,
+    Rest(&'a Value<'a>),
 }
 
 pub struct Interpreter<'a> {
     class_vtable: ClassVTable<'a>,
-    locals: VTable<'a, Value>,
+    locals: VTable<'a, Value<'a>>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -36,58 +37,29 @@ impl<'a> Interpreter<'a> {
 impl<'a> Visitor<'a> for &'a mut Interpreter<'a> {
     type Error = Error<'a>;
 
-    fn visit_let_local(&mut self, node: &'a ast::LetLocal<'a>) -> Result<'a, ()> {
+    fn visit_let_local(&mut self, node: &'a LetLocal<'a>) -> Result<'a, ()> {
         let name = &node.ident.name;
         let value = node.body.eval(self)?;
         self.locals.insert(name, value);
         Ok(())
     }
-
-    fn visit_let_ivar(&mut self, _: &'a ast::LetIVar<'a>) -> Result<'a, ()> {
-        Ok(())
-    }
-
-    fn visit_message_send_stmt(&mut self, _: &'a ast::MessageSendStmt<'a>) -> Result<'a, ()> {
-        Ok(())
-    }
-
-    fn visit_return(&mut self, _: &'a ast::Return<'a>) -> Result<'a, ()> {
-        Ok(())
-    }
 }
 
 trait Eval<'a> {
-    // Should this method return owned Values or borrowed?
-    // Evaling a `Local` has to be a reference, otherwise we have to clone it
-    // However `Digit` has to be owned, otherwise we'll return a reference to data owned by the
-    // current function...
-    //
-    // Do we have to give the values to the interpreter and then get references back?
-    fn eval(&self, interpreter: &'a Interpreter<'a>) -> Result<'a, Value>;
+    fn eval(&self, interpreter: &'a Interpreter<'a>) -> Result<'a, Value<'a>>;
 }
 
-impl<'a> Eval<'a> for ast::Expr<'a> {
-    fn eval(&self, interpreter: &'a Interpreter<'a>) -> Result<'a, Value> {
+impl<'a> Eval<'a> for Expr<'a> {
+    fn eval(&self, interpreter: &'a Interpreter<'a>) -> Result<'a, Value<'a>> {
         match self {
-            ast::Expr::Local(inner) => inner.eval(interpreter),
+            Expr::Local(inner) => inner.eval(interpreter),
             _ => unimplemented!(),
-            // ast::Expr::IVar(inner) => inner.eval(interpreter),
-            // ast::Expr::MessageSend(inner) => inner.eval(interpreter),
-            // ast::Expr::ClassNew(inner) => inner.eval(interpreter),
-            // ast::Expr::Selector(inner) => inner.eval(interpreter),
-            // ast::Expr::ClassNameSelector(inner) => inner.eval(interpreter),
-            // ast::Expr::Block(inner) => inner.eval(interpreter),
-            // ast::Expr::Digit(inner) => inner.eval(interpreter),
-            // ast::Expr::List(inner) => inner.eval(interpreter),
-            // ast::Expr::True(inner) => inner.eval(interpreter),
-            // ast::Expr::False(inner) => inner.eval(interpreter),
-            // ast::Expr::Self_(inner) => inner.eval(interpreter),
         }
     }
 }
 
-impl<'a> Eval<'a> for ast::Local<'a> {
-    fn eval(&self, interpreter: &'a Interpreter<'a>) -> Result<'a, Value> {
+impl<'a> Eval<'a> for Local<'a> {
+    fn eval(&self, interpreter: &'a Interpreter<'a>) -> Result<'a, Value<'a>> {
         unimplemented!()
         // let name = self.0.name;
         // let value = interpreter.locals.get(name).unwrap();
