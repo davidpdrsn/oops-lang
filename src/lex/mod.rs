@@ -398,28 +398,6 @@ impl<'a> Lexer<'a> {
     }
 }
 
-pub trait Indent {
-    fn indent(&self, level: usize) -> String;
-}
-
-impl<T> Indent for T
-where
-    T: ToString,
-{
-    fn indent(&self, level: usize) -> String {
-        let mut indent = String::new();
-        for _ in 0..level {
-            indent.push_str(" ");
-        }
-
-        self.to_string()
-            .lines()
-            .map(|line| format!("{}{}", indent, line))
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-}
-
 #[cfg(test)]
 mod test {
     #[allow(unused_imports)]

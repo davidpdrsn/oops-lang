@@ -7,7 +7,6 @@ use crate::{
     parse::{self as ast, Ident},
     Span,
 };
-use std::collections::HashMap;
 
 pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> Result<'a, ClassVTable<'a>> {
     let class_vtable = find_classes(ast)?;
