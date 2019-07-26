@@ -3,15 +3,16 @@
 
 #[macro_use]
 mod error;
+mod ast;
 mod interpret;
 mod lex;
 mod parse;
-mod ast;
 mod prep;
 
-use interpret::interpret;
+use interpret::{Interpreter, interpret};
 use lex::lex;
 use parse::parse;
+use prep::find_classes_and_methods;
 use std::path::PathBuf;
 use std::{fmt, fs};
 use structopt::StructOpt;
@@ -25,23 +26,28 @@ struct Opt {
     file: PathBuf,
 }
 
-fn main() {
-    let opt = Opt::from_args();
-    let source_text = fs::read_to_string(opt.file).unwrap();
-
-    let tokens = ok_or_exit(lex(&source_text));
-    let ast = ok_or_exit(parse(&tokens));
-    ok_or_exit(interpret(&ast));
+macro_rules! ok_or_exit {
+    ( $result:expr ) => {
+        match $result {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("{}", e);
+                std::process::exit(1)
+            }
+        }
+    };
 }
 
-fn ok_or_exit<T>(result: error::Result<'_, T>) -> T {
-    match result {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("{}", e);
-            std::process::exit(1)
-        }
-    }
+fn main() {
+    let opt = Opt::from_args();
+    let source_text = ok_or_exit!(fs::read_to_string(opt.file));
+
+    let tokens = ok_or_exit!(lex(&source_text));
+    let ast = ok_or_exit!(parse(&tokens));
+
+    let class_vtable = ok_or_exit!(find_classes_and_methods(&ast));
+    let mut interpreter = Interpreter::new(class_vtable);
+    ok_or_exit!(interpret(&mut interpreter, &ast));
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone)]
