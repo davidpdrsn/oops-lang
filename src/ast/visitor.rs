@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::result::Result;
 use crate::ast::*;
 
 pub trait Visitor<'a> {

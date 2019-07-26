@@ -1,10 +1,8 @@
-use super::{
-    visitor::{visit_ast, Visitor},
-    Ast, VTable,
-};
+use crate::ast::{visit_ast, Ast, Visitor};
 use crate::{
     ast::{self, Ident},
     error::{Error, Result},
+    interpret::VTable,
     Span,
 };
 

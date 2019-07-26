@@ -1,15 +1,13 @@
 mod class;
-mod visitor;
 
 use self::class::{find_classes_and_methods, ClassVTable};
 use crate::{
     error::{Error, Result},
-    ast::{self, Ast},
+    ast::{self, Ast, Visitor, visit_ast},
 };
 use std::{collections::HashMap, fmt};
-use visitor::{visit_ast, Visitor};
 
-type VTable<'a, T> = HashMap<&'a str, T>;
+pub type VTable<'a, T> = HashMap<&'a str, T>;
 
 pub fn interpret<'a>(ast: &'a Ast<'a>) -> Result<'a, ()> {
     let class_vtable = find_classes_and_methods(ast)?;

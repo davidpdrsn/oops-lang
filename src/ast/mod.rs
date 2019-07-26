@@ -1,3 +1,7 @@
+mod visitor;
+
+pub use visitor::{Visitor, visit_ast};
+
 use crate::parse::{Parse, ParseStream};
 use crate::{
     error::{Error, Result},
