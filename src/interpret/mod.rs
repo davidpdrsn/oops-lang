@@ -1,6 +1,4 @@
-mod class;
-
-use self::class::{find_classes_and_methods, ClassVTable};
+use crate::prep::{find_classes_and_methods, ClassVTable};
 use crate::{
     error::{Error, Result},
     ast::{self, Ast, Visitor, visit_ast},

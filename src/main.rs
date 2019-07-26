@@ -7,6 +7,7 @@ mod interpret;
 mod lex;
 mod parse;
 mod ast;
+mod prep;
 
 use interpret::interpret;
 use lex::lex;
