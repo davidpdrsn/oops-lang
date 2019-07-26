@@ -1,4 +1,4 @@
-use super::ast::*;
+use crate::ast::*;
 use crate::{
     error::{Error, Result},
     lex::{self, Token},

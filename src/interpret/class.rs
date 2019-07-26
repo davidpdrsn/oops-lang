@@ -3,8 +3,8 @@ use super::{
     Ast, VTable,
 };
 use crate::{
+    ast::{self, Ident},
     error::{Error, Result},
-    parse::{self as ast, Ident},
     Span,
 };
 

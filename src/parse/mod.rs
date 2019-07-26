@@ -1,13 +1,11 @@
-mod ast;
-mod parse_stream;
+pub mod parse_stream;
 
 use self::parse_stream::ParseStream;
 use crate::{
     error::{Error, Result},
     lex::Token,
 };
-
-pub use ast::*;
+use crate::ast::*;
 
 pub fn parse<'a>(tokens: &'a Vec<Token<'a>>) -> Result<Vec<Stmt<'a>>> {
     let mut stream = ParseStream::new(tokens);

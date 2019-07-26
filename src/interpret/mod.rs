@@ -4,7 +4,7 @@ mod visitor;
 use self::class::{find_classes_and_methods, ClassVTable};
 use crate::{
     error::{Error, Result},
-    parse::{self as ast, Ast},
+    ast::{self, Ast},
 };
 use std::{collections::HashMap, fmt};
 use visitor::{visit_ast, Visitor};
@@ -94,8 +94,9 @@ impl<'a> Eval<'a> for ast::Expr<'a> {
 
 impl<'a> Eval<'a> for ast::Local<'a> {
     fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value> {
-        let name = self.0.name;
-        let value = interpreter.locals.get(name).unwrap();
-        Ok(value)
+        unimplemented!()
+        // let name = self.0.name;
+        // let value = interpreter.locals.get(name).unwrap();
+        // Ok(value)
     }
 }

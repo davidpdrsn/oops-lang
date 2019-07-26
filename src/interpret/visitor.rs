@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::parse::*;
+use crate::ast::*;
 
 pub trait Visitor<'a> {
     type Error;

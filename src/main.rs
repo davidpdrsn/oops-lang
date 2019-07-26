@@ -6,6 +6,7 @@ mod error;
 mod interpret;
 mod lex;
 mod parse;
+mod ast;
 
 use interpret::interpret;
 use lex::lex;

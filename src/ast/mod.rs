@@ -1,4 +1,4 @@
-use super::parse_stream::{Parse, ParseStream};
+use crate::parse::parse_stream::{Parse, ParseStream};
 use crate::{
     error::{Error, Result},
     lex, Span,
