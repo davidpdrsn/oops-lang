@@ -76,10 +76,7 @@ struct FindMethods<'a> {
     classes: Classes<'a>,
 }
 
-fn find_methods<'a>(
-    ast: &'a Ast<'a>,
-    classes: Classes<'a>,
-) -> Result<'a, Classes<'a>> {
+fn find_methods<'a>(ast: &'a Ast<'a>, classes: Classes<'a>) -> Result<'a, Classes<'a>> {
     let mut f = FindMethods { classes };
     visit_ast(&mut f, ast)?;
     Ok(f.classes)
@@ -176,6 +173,16 @@ impl<'a> Class<'a> {
             methods: VTable::new(),
             span,
         }
+    }
+
+    pub fn get_method_named(&self, method_name: &'a str, call_site: Span) -> Result<'a, &Method<'a>> {
+        self.methods
+            .get(method_name)
+            .ok_or_else(|| Error::UndefinedMethod {
+                class: &self.name.name,
+                method: method_name,
+                span: call_site,
+            })
     }
 }
 

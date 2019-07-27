@@ -1,10 +1,13 @@
-use crate::prep::{self, Class};
+use crate::prep::{self, Class, Field};
 use crate::{
     ast::{visit_ast, Ast, Visitor, *},
     error::{Error, Result},
     Span,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{hash_map::Keys, HashMap},
+    rc::Rc,
+};
 
 pub type VTable<'a, T> = HashMap<&'a str, T>;
 
@@ -12,15 +15,17 @@ pub type ClassVTable<'a> = VTable<'a, Rc<Class<'a>>>;
 
 pub fn interpret<'a>(interpreter: &'a mut Interpreter<'a>, ast: &'a Ast<'a>) -> Result<'a, ()> {
     visit_ast(interpreter, ast)?;
+
     dbg!(&interpreter.locals);
 
     Ok(())
 }
 
 pub struct Interpreter<'a> {
-    classes: ClassVTable<'a>,
+    classes: Rc<ClassVTable<'a>>,
     locals: VTable<'a, Value<'a>>,
     self_: Option<Value<'a>>,
+    return_value: Option<Value<'a>>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -31,9 +36,23 @@ impl<'a> Interpreter<'a> {
             .collect();
 
         Self {
-            classes,
+            classes: Rc::new(classes),
             locals: HashMap::new(),
             self_: None,
+            return_value: None,
+        }
+    }
+
+    fn copy_for_method_call(
+        &self,
+        new_self: Value<'a>,
+        locals: VTable<'a, Value<'a>>,
+    ) -> Interpreter<'a> {
+        Interpreter {
+            classes: Rc::clone(&self.classes),
+            locals,
+            self_: Some(new_self),
+            return_value: None,
         }
     }
 
@@ -53,6 +72,10 @@ impl<'a> Visitor<'a> for Interpreter<'a> {
     type Error = Error<'a>;
 
     fn visit_let_local(&mut self, node: &'a LetLocal<'a>) -> Result<'a, ()> {
+        if self.return_value.is_some() {
+            return Ok(());
+        }
+
         let name = &node.ident.name;
         let value = node.body.eval(self)?;
         self.locals.insert(name, value);
@@ -60,15 +83,25 @@ impl<'a> Visitor<'a> for Interpreter<'a> {
     }
 
     fn visit_let_ivar(&mut self, _: &'a LetIVar<'a>) -> Result<'a, ()> {
+        if self.return_value.is_some() {
+            return Ok(());
+        }
+
         unimplemented!("todo")
     }
 
     fn visit_message_send_stmt(&mut self, _: &'a MessageSendStmt<'a>) -> Result<'a, ()> {
+        if self.return_value.is_some() {
+            return Ok(());
+        }
+
         unimplemented!("todo")
     }
 
-    fn visit_return(&mut self, _: &'a Return<'a>) -> Result<'a, ()> {
-        unimplemented!("todo")
+    fn visit_return(&mut self, node: &'a Return<'a>) -> Result<'a, ()> {
+        let value = node.expr.eval(self)?;
+        self.return_value = Some(value);
+        Ok(())
     }
 }
 
@@ -77,6 +110,7 @@ enum Value<'a> {
     Number(i32),
     True,
     False,
+    Nil,
     List(Rc<Vec<Value<'a>>>),
     Instance(Rc<Instance<'a>>),
 }
@@ -88,6 +122,7 @@ impl<'a> Value<'a> {
             Value::List(values) => Value::List(Rc::clone(values)),
             Value::True => Value::True,
             Value::False => Value::False,
+            Value::Nil => Value::Nil,
             Value::Instance(instance) => Value::Instance(Rc::clone(instance)),
         }
     }
@@ -114,8 +149,8 @@ impl<'a> Eval<'a> for Expr<'a> {
             Expr::ClassNew(inner) => inner.eval(interpreter),
             Expr::Self_(inner) => inner.eval(interpreter),
             Expr::MessageSend(inner) => inner.eval(interpreter),
+            Expr::IVar(inner) => inner.eval(interpreter),
 
-            Expr::IVar(_) => unimplemented!("eval IVar"),
             Expr::Block(_) => unimplemented!("eval Block"),
         }
     }
@@ -186,7 +221,8 @@ impl<'a> Eval<'a> for ClassNew<'a> {
         let call_site = self.class_name.0.span;
         let class = interpreter.lookup_class(class_name, call_site)?;
 
-        let ivars = eval_arguments(interpreter, &class, call_site, &self.args)?;
+        let parameters = class.fields.keys().copied().collect::<Vec<_>>();
+        let ivars = eval_arguments(interpreter, parameters, call_site, &self.args)?;
 
         let instance = Instance { class, ivars };
 
@@ -196,7 +232,7 @@ impl<'a> Eval<'a> for ClassNew<'a> {
 
 fn eval_arguments<'a>(
     interpreter: &Interpreter<'a>,
-    class: &Class<'a>,
+    parameters: Vec<&'a str>,
     call_site: Span,
     args: &[Argument<'a>],
 ) -> Result<'a, VTable<'a, Value<'a>>> {
@@ -207,14 +243,14 @@ fn eval_arguments<'a>(
     }
 
     let mut ivars = VTable::with_capacity(args.len());
-    for field_name in class.fields.keys() {
+    for param in parameters {
         let (value, _) = arg_values
-            .remove(field_name)
+            .remove(param)
             .ok_or_else(|| Error::MissingArgument {
-                name: field_name,
+                name: param,
                 span: call_site,
             })?;
-        ivars.insert(field_name, value);
+        ivars.insert(param, value);
     }
 
     for (name, (_value, span)) in arg_values {
@@ -227,7 +263,49 @@ fn eval_arguments<'a>(
 impl<'a> Eval<'a> for Box<MessageSend<'a>> {
     fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value<'a>> {
         let receiver = self.receiver.eval(interpreter)?;
+        let receiver = match receiver {
+            Value::Instance(instance) => instance,
+            _ => return Err(Error::MessageSentToNonInstance(self.span)),
+        };
 
-        unimplemented!()
+        let method = receiver.class.get_method_named(self.msg.name, self.span)?;
+        let new_self = Value::Instance(Rc::clone(&receiver));
+
+        let parameters = method
+            .parameters
+            .iter()
+            .map(|param| param.ident.name)
+            .collect::<Vec<_>>();
+        let new_locals = eval_arguments(interpreter, parameters, self.span, &self.args)?;
+
+        let mut method_interpreter = interpreter.copy_for_method_call(new_self, new_locals);
+
+        visit_ast(&mut method_interpreter, method.body)?;
+
+        let return_value = method_interpreter
+            .return_value
+            .unwrap_or_else(|| Value::Nil);
+        Ok(return_value)
+    }
+}
+
+impl<'a> Eval<'a> for IVar<'a> {
+    fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value<'a>> {
+        let name = &self.ident.name;
+        let span = self.span;
+
+        let instance = match &interpreter.self_ {
+            Some(Value::Instance(instance)) => instance,
+            Some(_) => return Err(Error::MessageSentToNonInstance(self.span)),
+            None => return Err(Error::IVarAccessedOutsideMethod { name, span }),
+        };
+
+        let value = instance
+            .ivars
+            .get(name)
+            .ok_or_else(|| Error::UndefinedIVar { name, span })?
+            .to_owned();
+
+        Ok(value)
     }
 }

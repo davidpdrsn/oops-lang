@@ -39,6 +39,20 @@ pub enum Error<'a> {
         span: Span,
     },
     NoSelf(Span),
+    MessageSentToNonInstance(Span),
+    UndefinedMethod {
+        class: &'a str,
+        method: &'a str,
+        span: Span,
+    },
+    IVarAccessedOutsideMethod {
+        name: &'a str,
+        span: Span,
+    },
+    UndefinedIVar {
+        name: &'a str,
+        span: Span,
+    },
 }
 
 impl From<io::Error> for Error<'_> {
@@ -108,6 +122,32 @@ impl fmt::Display for Error<'_> {
                 f,
                 "`self` called outside method at {}",
                 span,
+            ),
+            Error::MessageSentToNonInstance(span) => write!(
+                f,
+                "Message sent to non instance value at {}",
+                span,
+            ),
+            Error::UndefinedMethod {
+                class, method, span
+            } => write!(
+                f,
+                "Undefined method `{}#{}` at {}",
+                class, method, span
+            ),
+            Error::IVarAccessedOutsideMethod {
+                name, span
+            } => write!(
+                f,
+                "Instance variable `{}` accessed outside method at {}",
+                name, span
+            ),
+            Error::UndefinedIVar {
+                name, span
+            } => write!(
+                f,
+                "Instance variable `{}` is not defined. Accessed at {}",
+                name, span
             ),
         }
     }
