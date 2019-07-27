@@ -116,7 +116,6 @@ impl<'a> Eval<'a> for Expr<'a> {
 
             Expr::IVar(_) => unimplemented!("eval IVar"),
             Expr::MessageSend(_) => unimplemented!("eval MessageSend"),
-            Expr::ClassNameSelector(_) => unimplemented!("eval ClassNameSelector"),
             Expr::Block(_) => unimplemented!("eval Block"),
         }
     }

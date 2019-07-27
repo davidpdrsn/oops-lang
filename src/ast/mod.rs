@@ -108,7 +108,6 @@ pub enum Expr<'a> {
     IVar(IVar<'a>),
     MessageSend(Box<MessageSend<'a>>),
     ClassNew(ClassNew<'a>),
-    ClassNameSelector(ClassNameSelector<'a>),
     Block(Block<'a>),
     Number(Number),
     List(List<'a>),
@@ -124,7 +123,6 @@ impl<'a> Expr<'a> {
             Expr::IVar(inner) => inner.span,
             Expr::MessageSend(inner) => inner.span,
             Expr::ClassNew(inner) => inner.span,
-            Expr::ClassNameSelector(inner) => inner.span,
             Expr::Block(inner) => inner.span,
             Expr::Number(inner) => inner.span,
             Expr::List(inner) => inner.span,
@@ -137,7 +135,6 @@ impl<'a> Expr<'a> {
 
 impl_into!(Expr, Local<'a>);
 impl_into!(Expr, IVar<'a>);
-impl_into!(Expr, ClassNameSelector<'a>);
 impl_into!(Expr, ClassNew<'a>);
 impl_into!(Expr, Block<'a>);
 impl_into!(Expr, Number);
@@ -393,7 +390,6 @@ impl<'a> Parse<'a> for Ident<'a> {
 
 impl<'a> Parse<'a> for Expr<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<'a, Self> {
-        try_parse_node!(ClassNameSelector, stream);
         try_parse_node!(ClassNew, stream);
         try_parse_node!(Local, stream);
         try_parse_node!(IVar, stream);
