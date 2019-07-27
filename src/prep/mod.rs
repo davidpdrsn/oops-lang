@@ -6,15 +6,17 @@ use crate::{
     Span,
 };
 
-pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> Result<'a, ClassVTable<'a>> {
-    let class_vtable = find_classes(ast)?;
-    find_methods(ast, class_vtable)
+pub type Classes<'a> = VTable<'a, Class<'a>>;
+
+pub fn find_classes_and_methods<'a>(ast: &'a Ast<'a>) -> Result<'a, Classes<'a>> {
+    let classes = find_classes(ast)?;
+    find_methods(ast, classes)
 }
 
-fn find_classes<'a>(ast: &'a Ast<'a>) -> Result<'a, ClassVTable<'a>> {
+fn find_classes<'a>(ast: &'a Ast<'a>) -> Result<'a, Classes<'a>> {
     let mut f = FindClasses::default();
     visit_ast(&mut f, ast)?;
-    Ok(ClassVTable { table: f.table })
+    Ok(f.table)
 }
 
 #[derive(Default)]
@@ -71,16 +73,16 @@ impl<'a> FindClasses<'a> {
 }
 
 struct FindMethods<'a> {
-    class_vtable: ClassVTable<'a>,
+    classes: Classes<'a>,
 }
 
 fn find_methods<'a>(
     ast: &'a Ast<'a>,
-    class_vtable: ClassVTable<'a>,
-) -> Result<'a, ClassVTable<'a>> {
-    let mut f = FindMethods { class_vtable };
+    classes: Classes<'a>,
+) -> Result<'a, Classes<'a>> {
+    let mut f = FindMethods { classes };
     visit_ast(&mut f, ast)?;
-    Ok(f.class_vtable)
+    Ok(f.classes)
 }
 
 impl<'a> Visitor<'a> for FindMethods<'a> {
@@ -118,11 +120,11 @@ impl<'a> Visitor<'a> for FindMethods<'a> {
 
 impl<'a> FindMethods<'a> {
     fn get_class(&self, name: &str) -> Option<&Class<'a>> {
-        self.class_vtable.table.get(name)
+        self.classes.get(name)
     }
 
     fn get_class_mut(&mut self, name: &str) -> Option<&mut Class<'a>> {
-        self.class_vtable.table.get_mut(name)
+        self.classes.get_mut(name)
     }
 
     fn check_for_existing_method_with_same_name(
@@ -159,17 +161,6 @@ impl<'a> FindMethods<'a> {
 }
 
 #[derive(Debug)]
-pub struct ClassVTable<'a> {
-    pub table: VTable<'a, Class<'a>>,
-}
-
-impl<'a> ClassVTable<'a> {
-    fn get(&self, key: &str) -> Option<&'a Class> {
-        self.table.get(key)
-    }
-}
-
-#[derive(Debug)]
 pub struct Class<'a> {
     pub name: &'a Ident<'a>,
     pub fields: VTable<'a, Field<'a>>,
@@ -188,7 +179,7 @@ impl<'a> Class<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Field<'a> {
     pub name: &'a Ident<'a>,
 }
@@ -215,8 +206,8 @@ mod test {
         "#;
         let tokens = lex(&program).unwrap();
         let ast = parse(&tokens).unwrap();
-        let class_vtable = find_classes_and_methods(&ast).unwrap();
-        let class = class_vtable.get("User").unwrap();
+        let classes = find_classes_and_methods(&ast).unwrap();
+        let class = classes.get("User").unwrap();
 
         assert_eq!("User", class.name.name);
 

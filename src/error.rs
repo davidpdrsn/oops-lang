@@ -30,6 +30,14 @@ pub enum Error<'a> {
         name: &'a str,
         span: Span,
     },
+    MissingArgument {
+        name: &'a str,
+        span: Span,
+    },
+    UnexpectedArgument {
+        name: &'a str,
+        span: Span,
+    },
 }
 
 impl From<io::Error> for Error<'_> {
@@ -49,7 +57,7 @@ impl fmt::Display for Error<'_> {
                 ..
             } => write!(
                 f,
-                "The class {} is not defined",
+                "The class `{}` is not defined",
                 class,
             ),
             Error::ClassAlreadyDefined {
@@ -58,7 +66,7 @@ impl fmt::Display for Error<'_> {
                 second_span,
             } => write!(
                 f,
-                "The class {} was defined more than once. First time at {}, second time at {}",
+                "The class `{}` was defined more than once. First time at {}, second time at {}",
                 class, first_span, second_span
             ),
             Error::MethodAlreadyDefined {
@@ -68,7 +76,7 @@ impl fmt::Display for Error<'_> {
                 second_span,
             } => write!(
                 f,
-                "The method {class}#{method} was defined more than once. First time at {first}, second time at {second}",
+                "The method `{class}#{method}` was defined more than once. First time at {first}, second time at {second}",
                 class = class,
                 method = method,
                 first = first_span,
@@ -78,7 +86,21 @@ impl fmt::Display for Error<'_> {
                 name, span
             } => write!(
                 f,
-                "Undefined local variable {} at {}",
+                "Undefined local variable `{}` at {}",
+                name, span
+            ),
+            Error::MissingArgument {
+                name, span
+            } => write!(
+                f,
+                "Missing argument `{}:` at {}",
+                name, span
+            ),
+            Error::UnexpectedArgument {
+                name, span
+            } => write!(
+                f,
+                "Unexpected argument `{}:` at {}",
                 name, span
             ),
         }
