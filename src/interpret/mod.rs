@@ -113,9 +113,9 @@ impl<'a> Eval<'a> for Expr<'a> {
             Expr::False(inner) => inner.eval(interpreter),
             Expr::ClassNew(inner) => inner.eval(interpreter),
             Expr::Self_(inner) => inner.eval(interpreter),
+            Expr::MessageSend(inner) => inner.eval(interpreter),
 
             Expr::IVar(_) => unimplemented!("eval IVar"),
-            Expr::MessageSend(_) => unimplemented!("eval MessageSend"),
             Expr::Block(_) => unimplemented!("eval Block"),
         }
     }
@@ -200,33 +200,34 @@ fn eval_arguments<'a>(
     call_site: Span,
     args: &[Argument<'a>],
 ) -> Result<'a, VTable<'a, Value<'a>>> {
-    let mut args = args
-        .iter()
-        .map(|arg| (&arg.ident.name, arg))
-        .collect::<HashMap<_, _>>();
+    let mut arg_values = VTable::with_capacity(args.len());
+    for arg in args {
+        let value = arg.expr.eval(interpreter)?;
+        arg_values.insert(&arg.ident.name, (value, arg.span));
+    }
 
-    let ivars: Result<'a, VTable<'a, Value<'a>>> = class.fields.keys().try_fold(
-        VTable::with_capacity(class.fields.len()),
-        |mut acc, field_name| {
-            let arg = args
-                .remove(field_name)
-                .ok_or_else(|| Error::MissingArgument {
-                    name: field_name,
-                    span: call_site,
-                })?;
-            let value = arg.expr.eval(interpreter)?;
-            acc.insert(field_name, value);
-            Ok(acc)
-        },
-    );
-    let ivars = ivars?;
+    let mut ivars = VTable::with_capacity(args.len());
+    for field_name in class.fields.keys() {
+        let (value, _) = arg_values
+            .remove(field_name)
+            .ok_or_else(|| Error::MissingArgument {
+                name: field_name,
+                span: call_site,
+            })?;
+        ivars.insert(field_name, value);
+    }
 
-    for (name, arg) in args {
-        Err(Error::UnexpectedArgument {
-            name,
-            span: arg.span,
-        })?;
+    for (name, (_value, span)) in arg_values {
+        Err(Error::UnexpectedArgument { name, span })?;
     }
 
     Ok(ivars)
+}
+
+impl<'a> Eval<'a> for Box<MessageSend<'a>> {
+    fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value<'a>> {
+        let receiver = self.receiver.eval(interpreter)?;
+
+        unimplemented!()
+    }
 }
