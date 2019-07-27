@@ -26,6 +26,10 @@ pub enum Error<'a> {
         first_span: Span,
         second_span: Span,
     },
+    UndefinedLocal {
+        name: &'a str,
+        span: Span,
+    },
 }
 
 impl From<io::Error> for Error<'_> {
@@ -69,6 +73,13 @@ impl fmt::Display for Error<'_> {
                 method = method,
                 first = first_span,
                 second = second_span,
+            ),
+            Error::UndefinedLocal {
+                name, span
+            } => write!(
+                f,
+                "Undefined local variable {} at {}",
+                name, span
             ),
         }
     }
