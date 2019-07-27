@@ -1,6 +1,6 @@
 mod visitor;
 
-pub use visitor::{Visitor, visit_ast};
+pub use visitor::{visit_ast, Visitor};
 
 use crate::parse::{Parse, ParseStream};
 use crate::{
@@ -95,6 +95,7 @@ pub struct Return<'a> {
 pub struct DefineClass<'a> {
     pub name: ClassNameSelector<'a>,
     pub fields: Vec<Selector<'a>>,
+    pub super_class: ClassNameSelector<'a>,
     pub span: Span,
 }
 
@@ -355,7 +356,15 @@ impl<'a> Parse<'a> for DefineClass<'a> {
     fn parse(stream: &mut ParseStream<'a>) -> Result<'a, Self> {
         let start = stream.parse_token::<lex::OBracket>()?.span;
 
-        stream.parse_specific_class_name("Class")?;
+        let super_class_name = stream.parse_token::<lex::ClassName>()?;
+        let super_class = ClassNameSelector {
+            class_name: ClassName(Ident {
+                name: super_class_name.name,
+                span: super_class_name.span,
+            }),
+            span: super_class_name.span,
+        };
+
         stream.parse_specific_ident("subclass")?;
 
         stream.parse_specific_ident("name")?;
@@ -375,6 +384,7 @@ impl<'a> Parse<'a> for DefineClass<'a> {
         Ok(DefineClass {
             name,
             fields,
+            super_class,
             span: Span::new(start.from, end.to),
         })
     }

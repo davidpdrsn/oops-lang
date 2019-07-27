@@ -1,7 +1,10 @@
-use crate::{error::{Error, Result}, Span};
+use crate::{
+    error::{Error, Result},
+    Span,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::fmt::{self, Write};
+use std::fmt;
 
 pub fn lex<'a>(program: &'a str) -> Result<Vec<Token<'a>>> {
     Lexer::lex(program)
@@ -369,7 +372,9 @@ impl<'a> Lexer<'a> {
             return Ok(());
         }
 
-        Err(Error::LexError { at: self.current_position })
+        Err(Error::LexError {
+            at: self.current_position,
+        })
     }
 
     fn scan(&self, re: &Regex) -> Option<&'a str> {
@@ -430,7 +435,10 @@ mod test {
     #[test]
     fn bool() {
         let program = "true";
-        assert_eq!(lex(program).unwrap(), vec![Token::True(True::new(Span::new(0, 4)))]);
+        assert_eq!(
+            lex(program).unwrap(),
+            vec![Token::True(True::new(Span::new(0, 4)))]
+        );
 
         let program = "false";
         assert_eq!(

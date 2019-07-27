@@ -15,9 +15,7 @@ pub type ClassVTable<'a> = VTable<'a, Rc<Class<'a>>>;
 
 pub fn interpret<'a>(interpreter: &'a mut Interpreter<'a>, ast: &'a Ast<'a>) -> Result<'a, ()> {
     visit_ast(interpreter, ast)?;
-
     dbg!(&interpreter.locals);
-
     Ok(())
 }
 
@@ -30,11 +28,6 @@ pub struct Interpreter<'a> {
 
 impl<'a> Interpreter<'a> {
     pub fn new(classes: prep::Classes<'a>) -> Self {
-        let classes = classes
-            .into_iter()
-            .map(|(name, class)| (name, Rc::new(class)))
-            .collect();
-
         Self {
             classes: Rc::new(classes),
             locals: HashMap::new(),
@@ -268,7 +261,11 @@ impl<'a> Eval<'a> for Box<MessageSend<'a>> {
             _ => return Err(Error::MessageSentToNonInstance(self.span)),
         };
 
-        let method = receiver.class.get_method_named(self.msg.name, self.span)?;
+        let method =
+            receiver
+                .class
+                .get_method_named(self.msg.name, self.span)?;
+
         let new_self = Value::Instance(Rc::clone(&receiver));
 
         let parameters = method
