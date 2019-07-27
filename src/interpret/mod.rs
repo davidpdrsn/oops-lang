@@ -42,14 +42,18 @@ impl<'a> Visitor<'a> for Interpreter<'a> {
 #[derive(Debug)]
 enum Value {
     Number(i32),
-    Ref(Rc<Value>),
+    True,
+    False,
+    List(Rc<Vec<Value>>),
 }
 
 impl Value {
-    fn into_owned(&self) -> Self {
+    fn to_owned(&self) -> Self {
         match self {
             Value::Number(n) => Value::Number(*n),
-            Value::Ref(r) => Value::Ref(Rc::clone(r)),
+            Value::List(values) => Value::List(Rc::clone(values)),
+            Value::True => Value::True,
+            Value::False => Value::False,
         }
     }
 }
@@ -63,6 +67,9 @@ impl<'a> Eval<'a> for Expr<'a> {
         match self {
             Expr::Local(inner) => inner.eval(interpreter),
             Expr::Digit(inner) => inner.eval(interpreter),
+            Expr::List(inner) => inner.eval(interpreter),
+            Expr::True(inner) => inner.eval(interpreter),
+            Expr::False(inner) => inner.eval(interpreter),
 
             Expr::IVar(_) => unimplemented!("eval IVar"),
             Expr::MessageSend(_) => unimplemented!("eval MessageSend"),
@@ -70,9 +77,6 @@ impl<'a> Eval<'a> for Expr<'a> {
             Expr::Selector(_) => unimplemented!("eval Selector"),
             Expr::ClassNameSelector(_) => unimplemented!("eval ClassNameSelector"),
             Expr::Block(_) => unimplemented!("eval Block"),
-            Expr::List(_) => unimplemented!("eval List"),
-            Expr::True(_) => unimplemented!("eval True"),
-            Expr::False(_) => unimplemented!("eval False"),
             Expr::Self_(_) => unimplemented!("eval Self_"),
         }
     }
@@ -81,17 +85,48 @@ impl<'a> Eval<'a> for Expr<'a> {
 impl<'a> Eval<'a> for Local<'a> {
     fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value> {
         let name = self.0.name;
-        let value = interpreter.locals.get(name).ok_or_else(|| {
-            Error::UndefinedLocal { name, span: self.0.span }
-        })?;
-        Ok(value.into_owned())
+        let value = interpreter
+            .locals
+            .get(name)
+            .ok_or_else(|| Error::UndefinedLocal {
+                name,
+                span: self.0.span,
+            })?;
+        Ok(value.to_owned())
     }
 }
 
 impl<'a> Eval<'a> for Digit {
-    fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value> {
+    fn eval(&self, _: &Interpreter<'a>) -> Result<'a, Value> {
         let digit = self.digit;
-        let value = Value::Number(digit);
-        Ok(value)
+        Ok(Value::Number(digit))
+    }
+}
+
+impl<'a> Eval<'a> for List<'a> {
+    fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value> {
+        let items = &self.items;
+        let values: Result<'a, Vec<Value>> =
+            items
+                .iter()
+                .try_fold(Vec::with_capacity(items.len()), |mut acc, expr| {
+                    let value = expr.eval(interpreter)?;
+                    acc.push(value);
+                    Ok(acc)
+                });
+        let values = values?;
+        Ok(Value::List(Rc::new(values)))
+    }
+}
+
+impl<'a> Eval<'a> for True {
+    fn eval(&self, _: &Interpreter<'a>) -> Result<'a, Value> {
+        Ok(Value::True)
+    }
+}
+
+impl<'a> Eval<'a> for False {
+    fn eval(&self, _: &Interpreter<'a>) -> Result<'a, Value> {
+        Ok(Value::False)
     }
 }
