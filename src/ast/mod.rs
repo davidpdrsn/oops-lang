@@ -111,7 +111,7 @@ pub enum Expr<'a> {
     Selector(Selector<'a>),
     ClassNameSelector(ClassNameSelector<'a>),
     Block(Block<'a>),
-    Digit(Digit),
+    Number(Number),
     List(List<'a>),
     True(True),
     False(False),
@@ -128,7 +128,7 @@ impl<'a> Expr<'a> {
             Expr::Selector(inner) => inner.span,
             Expr::ClassNameSelector(inner) => inner.span,
             Expr::Block(inner) => inner.span,
-            Expr::Digit(inner) => inner.span,
+            Expr::Number(inner) => inner.span,
             Expr::List(inner) => inner.span,
             Expr::True(inner) => inner.0,
             Expr::False(inner) => inner.0,
@@ -143,7 +143,7 @@ impl_into!(Expr, Selector<'a>);
 impl_into!(Expr, ClassNameSelector<'a>);
 impl_into!(Expr, ClassNew<'a>);
 impl_into!(Expr, Block<'a>);
-impl_into!(Expr, Digit);
+impl_into!(Expr, Number);
 impl_into!(Expr, List<'a>);
 impl_into!(Expr, True);
 impl_into!(Expr, False);
@@ -168,8 +168,8 @@ pub struct IVar<'a> {
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct Digit {
-    pub digit: i32,
+pub struct Number {
+    pub number: i32,
     pub span: Span,
 }
 
@@ -402,7 +402,7 @@ impl<'a> Parse<'a> for Expr<'a> {
         try_parse_node!(IVar, stream);
         try_parse_node!(Selector, stream);
         try_parse_node!(Block, stream);
-        try_parse_node!(Digit, stream);
+        try_parse_node!(Number, stream);
         try_parse_node!(List, stream);
         try_parse_node!(True, stream);
         try_parse_node!(False, stream);
@@ -416,11 +416,11 @@ impl<'a> Parse<'a> for Expr<'a> {
     }
 }
 
-impl<'a> Parse<'a> for Digit {
+impl<'a> Parse<'a> for Number {
     fn parse(stream: &mut ParseStream<'a>) -> Result<'a, Self> {
-        let lex::Digit { digit, span } = stream.parse_token()?;
-        Ok(Digit {
-            digit: *digit,
+        let lex::Number { number, span } = stream.parse_token()?;
+        Ok(Number {
+            number: *number,
             span: *span,
         })
     }

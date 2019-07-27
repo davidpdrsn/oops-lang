@@ -73,7 +73,7 @@ pub trait Visitor<'a> {
         Ok(())
     }
 
-    fn visit_digit(&mut self, _: &'a Digit) -> Result<(), Self::Error> {
+    fn visit_number(&mut self, _: &'a Number) -> Result<(), Self::Error> {
         Ok(())
     }
 
@@ -163,7 +163,7 @@ fn visit_expr<'a, V: Visitor<'a>>(v: &mut V, node: &'a Expr<'a>) -> Result<(), V
         Expr::Selector(inner) => visit_selector(v, inner)?,
         Expr::ClassNameSelector(inner) => visit_class_name_selector(v, inner)?,
         Expr::Block(inner) => visit_block(v, inner)?,
-        Expr::Digit(inner) => visit_digit(v, inner)?,
+        Expr::Number(inner) => visit_number(v, inner)?,
         Expr::List(inner) => visit_list(v, inner)?,
         Expr::True(inner) => visit_true(v, inner)?,
         Expr::False(inner) => visit_false(v, inner)?,
@@ -207,8 +207,8 @@ fn visit_block<'a, V: Visitor<'a>>(v: &mut V, node: &'a Block<'a>) -> Result<(),
     v.visit_block(node)
 }
 
-fn visit_digit<'a, V: Visitor<'a>>(v: &mut V, node: &'a Digit) -> Result<(), V::Error> {
-    v.visit_digit(node)
+fn visit_number<'a, V: Visitor<'a>>(v: &mut V, node: &'a Number) -> Result<(), V::Error> {
+    v.visit_number(node)
 }
 
 fn visit_list<'a, V: Visitor<'a>>(v: &mut V, node: &'a List<'a>) -> Result<(), V::Error> {

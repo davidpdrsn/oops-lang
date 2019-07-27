@@ -66,7 +66,7 @@ impl<'a> Eval<'a> for Expr<'a> {
     fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value> {
         match self {
             Expr::Local(inner) => inner.eval(interpreter),
-            Expr::Digit(inner) => inner.eval(interpreter),
+            Expr::Number(inner) => inner.eval(interpreter),
             Expr::List(inner) => inner.eval(interpreter),
             Expr::True(inner) => inner.eval(interpreter),
             Expr::False(inner) => inner.eval(interpreter),
@@ -96,10 +96,10 @@ impl<'a> Eval<'a> for Local<'a> {
     }
 }
 
-impl<'a> Eval<'a> for Digit {
+impl<'a> Eval<'a> for Number {
     fn eval(&self, _: &Interpreter<'a>) -> Result<'a, Value> {
-        let digit = self.digit;
-        Ok(Value::Number(digit))
+        let number = self.number;
+        Ok(Value::Number(number))
     }
 }
 

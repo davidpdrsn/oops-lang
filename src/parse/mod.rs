@@ -151,7 +151,7 @@ mod test {
     use crate::{lex::lex, Span};
 
     #[test]
-    fn let_digit() {
+    fn let_number() {
         let program = "let number = 1;";
         let tokens = lex(&program).unwrap();
         let ast = parse(&tokens).unwrap();
@@ -163,8 +163,8 @@ mod test {
                     name: "number",
                     span: Span::new(4, 10)
                 },
-                body: Expr::Digit(Digit {
-                    digit: 1,
+                body: Expr::Number(Number {
+                    number: 1,
                     span: Span::new(13, 14)
                 }),
                 span: Span::new(0, 15),
