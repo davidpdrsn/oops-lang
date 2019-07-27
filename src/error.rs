@@ -38,6 +38,7 @@ pub enum Error<'a> {
         name: &'a str,
         span: Span,
     },
+    NoSelf(Span),
 }
 
 impl From<io::Error> for Error<'_> {
@@ -102,6 +103,11 @@ impl fmt::Display for Error<'_> {
                 f,
                 "Unexpected argument `{}:` at {}",
                 name, span
+            ),
+            Error::NoSelf(span) => write!(
+                f,
+                "`self` called outside method at {}",
+                span,
             ),
         }
     }

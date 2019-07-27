@@ -52,8 +52,9 @@ let user = [User new];
 - [ ] Interpretation
     - [x] Build class vtable
     - [ ] Namespace and imports
-    - [ ] Return output from Visitor
-    - [ ] Support Errors in Visitor methods
+    - [x] Return output from Visitor
+    - [x] Support Errors in Visitor methods
     - [ ] Evaluate statements
+    - [ ] Inheritance
 - [ ] Compilation to JavaScript
 - [ ] Vim syntax highlighting

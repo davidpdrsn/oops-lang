@@ -58,10 +58,6 @@ pub trait Visitor<'a> {
         Ok(())
     }
 
-    fn visit_selector(&mut self, _: &'a Selector<'a>) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
     fn visit_class_name_selector(
         &mut self,
         _: &'a ClassNameSelector<'a>,
@@ -160,7 +156,6 @@ fn visit_expr<'a, V: Visitor<'a>>(v: &mut V, node: &'a Expr<'a>) -> Result<(), V
         Expr::IVar(inner) => visit_ivar(v, inner)?,
         Expr::MessageSend(inner) => visit_message_send(v, inner)?,
         Expr::ClassNew(inner) => visit_class_new(v, inner)?,
-        Expr::Selector(inner) => visit_selector(v, inner)?,
         Expr::ClassNameSelector(inner) => visit_class_name_selector(v, inner)?,
         Expr::Block(inner) => visit_block(v, inner)?,
         Expr::Number(inner) => visit_number(v, inner)?,
@@ -190,10 +185,6 @@ fn visit_message_send<'a, V: Visitor<'a>>(
 
 fn visit_class_new<'a, V: Visitor<'a>>(v: &mut V, node: &'a ClassNew<'a>) -> Result<(), V::Error> {
     v.visit_class_new(node)
-}
-
-fn visit_selector<'a, V: Visitor<'a>>(v: &mut V, node: &'a Selector<'a>) -> Result<(), V::Error> {
-    v.visit_selector(node)
 }
 
 fn visit_class_name_selector<'a, V: Visitor<'a>>(

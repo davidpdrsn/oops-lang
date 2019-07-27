@@ -20,6 +20,7 @@ pub fn interpret<'a>(interpreter: &'a mut Interpreter<'a>, ast: &'a Ast<'a>) -> 
 pub struct Interpreter<'a> {
     classes: ClassVTable<'a>,
     locals: VTable<'a, Value<'a>>,
+    self_: Option<Value<'a>>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -32,6 +33,7 @@ impl<'a> Interpreter<'a> {
         Self {
             classes,
             locals: HashMap::new(),
+            self_: None,
         }
     }
 
@@ -55,6 +57,18 @@ impl<'a> Visitor<'a> for Interpreter<'a> {
         let value = node.body.eval(self)?;
         self.locals.insert(name, value);
         Ok(())
+    }
+
+    fn visit_let_ivar(&mut self, _: &'a LetIVar<'a>) -> Result<'a, ()> {
+        unimplemented!("todo")
+    }
+
+    fn visit_message_send_stmt(&mut self, _: &'a MessageSendStmt<'a>) -> Result<'a, ()> {
+        unimplemented!("todo")
+    }
+
+    fn visit_return(&mut self, _: &'a Return<'a>) -> Result<'a, ()> {
+        unimplemented!("todo")
     }
 }
 
@@ -98,13 +112,12 @@ impl<'a> Eval<'a> for Expr<'a> {
             Expr::True(inner) => inner.eval(interpreter),
             Expr::False(inner) => inner.eval(interpreter),
             Expr::ClassNew(inner) => inner.eval(interpreter),
+            Expr::Self_(inner) => inner.eval(interpreter),
 
             Expr::IVar(_) => unimplemented!("eval IVar"),
             Expr::MessageSend(_) => unimplemented!("eval MessageSend"),
-            Expr::Selector(_) => unimplemented!("eval Selector"),
             Expr::ClassNameSelector(_) => unimplemented!("eval ClassNameSelector"),
             Expr::Block(_) => unimplemented!("eval Block"),
-            Expr::Self_(_) => unimplemented!("eval Self_"),
         }
     }
 }
@@ -158,6 +171,16 @@ impl<'a> Eval<'a> for False {
     }
 }
 
+impl<'a> Eval<'a> for Self_ {
+    fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value<'a>> {
+        let self_ = interpreter
+            .self_
+            .as_ref()
+            .ok_or_else(|| Error::NoSelf(self.0))?;
+        Ok(self_.to_owned())
+    }
+}
+
 impl<'a> Eval<'a> for ClassNew<'a> {
     fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value<'a>> {
         let class_name = self.class_name.0.name;
@@ -183,18 +206,21 @@ fn eval_arguments<'a>(
         .map(|arg| (&arg.ident.name, arg))
         .collect::<HashMap<_, _>>();
 
-    // TODO: Convert to `try_fold`
-    let mut ivars = VTable::new();
-    for field_name in class.fields.keys() {
-        let arg = args
-            .remove(field_name)
-            .ok_or_else(|| Error::MissingArgument {
-                name: field_name,
-                span: call_site,
-            })?;
-        let value = arg.expr.eval(interpreter)?;
-        ivars.insert(field_name, value);
-    }
+    let ivars: Result<'a, VTable<'a, Value<'a>>> = class.fields.keys().try_fold(
+        VTable::with_capacity(class.fields.len()),
+        |mut acc, field_name| {
+            let arg = args
+                .remove(field_name)
+                .ok_or_else(|| Error::MissingArgument {
+                    name: field_name,
+                    span: call_site,
+                })?;
+            let value = arg.expr.eval(interpreter)?;
+            acc.insert(field_name, value);
+            Ok(acc)
+        },
+    );
+    let ivars = ivars?;
 
     for (name, arg) in args {
         Err(Error::UnexpectedArgument {
