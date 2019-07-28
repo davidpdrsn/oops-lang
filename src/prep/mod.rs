@@ -18,7 +18,9 @@ pub fn find_classes_and_methods<'a>(
 }
 
 fn find_classes<'a>(ast: &'a Ast<'a>, built_in_classes: Classes<'a>) -> Result<'a, Classes<'a>> {
-    let mut f = FindClasses { table: built_in_classes };
+    let mut f = FindClasses {
+        table: built_in_classes,
+    };
     visit_ast(&mut f, ast)?;
     f.setup_super_classes()?;
     Ok(f.table)

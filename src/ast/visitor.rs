@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use std::result::Result;
 use crate::ast::*;
+use std::result::Result;
 
 pub trait Visitor<'a> {
     type Error;

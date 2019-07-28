@@ -40,6 +40,8 @@ pub enum Error<'a> {
     },
     NoSelf(Span),
     MessageSentToNonInstance(Span),
+    IVarAccessedWithoutSelf(Span),
+    IVarAccessedOnNonInstanceValue(Span),
     UndefinedMethod {
         class: &'a str,
         method: &'a str,
@@ -148,6 +150,16 @@ impl fmt::Display for Error<'_> {
                 f,
                 "Instance variable `{}` is not defined. Accessed at {}",
                 name, span
+            ),
+            Error::IVarAccessedWithoutSelf(span) => write!(
+                f,
+                "Instance variabled access without a `self` at {}",
+                span
+            ),
+            Error::IVarAccessedOnNonInstanceValue(span) => write!(
+                f,
+                "Instance variabled access on `self` that isn't an instance at {}",
+                span
             ),
         }
     }

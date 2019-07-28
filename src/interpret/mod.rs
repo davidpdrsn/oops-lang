@@ -75,20 +75,20 @@ impl<'a> Visitor<'a> for Interpreter<'a> {
         Ok(())
     }
 
-    fn visit_let_ivar(&mut self, _: &'a LetIVar<'a>) -> Result<'a, ()> {
+    fn visit_let_ivar(&mut self, node: &'a LetIVar<'a>) -> Result<'a, ()> {
         if self.return_value.is_some() {
             return Ok(());
         }
 
-        unimplemented!("todo")
+        unimplemented!("TODO: visit_let_ivar")
     }
 
-    fn visit_message_send_stmt(&mut self, _: &'a MessageSendStmt<'a>) -> Result<'a, ()> {
+    fn visit_message_send_stmt(&mut self, node: &'a MessageSendStmt<'a>) -> Result<'a, ()> {
         if self.return_value.is_some() {
             return Ok(());
         }
-
-        unimplemented!("todo")
+        node.expr.eval(self)?;
+        Ok(())
     }
 
     fn visit_return(&mut self, node: &'a Return<'a>) -> Result<'a, ()> {
@@ -253,7 +253,7 @@ fn eval_arguments<'a>(
     Ok(ivars)
 }
 
-impl<'a> Eval<'a> for Box<MessageSend<'a>> {
+impl<'a> Eval<'a> for MessageSend<'a> {
     fn eval(&self, interpreter: &Interpreter<'a>) -> Result<'a, Value<'a>> {
         let receiver = self.receiver.eval(interpreter)?;
         let receiver = match receiver {
@@ -261,10 +261,7 @@ impl<'a> Eval<'a> for Box<MessageSend<'a>> {
             _ => return Err(Error::MessageSentToNonInstance(self.span)),
         };
 
-        let method =
-            receiver
-                .class
-                .get_method_named(self.msg.name, self.span)?;
+        let method = receiver.class.get_method_named(self.msg.name, self.span)?;
 
         let new_self = Value::Instance(Rc::clone(&receiver));
 
@@ -292,8 +289,10 @@ impl<'a> Eval<'a> for IVar<'a> {
         let span = self.span;
 
         let instance = match &interpreter.self_ {
-            Some(Value::Instance(instance)) => instance,
-            Some(_) => return Err(Error::MessageSentToNonInstance(self.span)),
+            Some(inner) => match inner.to_owned() {
+                Value::Instance(instance) => instance,
+                _ => return Err(Error::MessageSentToNonInstance(self.span)),
+            },
             None => return Err(Error::IVarAccessedOutsideMethod { name, span }),
         };
 
